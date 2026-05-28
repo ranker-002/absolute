@@ -107,21 +107,51 @@ setup_bin() {
     echo -e "${GREEN}✓ Global command available: ultimate${NC}"
 }
 
-# Setup API key prompt
+# Setup API key
 setup_config() {
+    echo ""
+    echo -e "${YELLOW}┌─────────────────────────────────────────────┐${NC}"
+    echo -e "${YELLOW}│  OpenRouter API Key Required                │${NC}"
+    echo -e "${YELLOW}│                                             │${NC}"
+    echo -e "${YELLOW}│  Get yours FREE at:                         │${NC}"
+    echo -e "${YELLOW}│  https://openrouter.ai/keys                 │${NC}"
+    echo -e "${YELLOW}└─────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    # Check if key already configured
     if [ -f "$INSTALL_DIR/.env" ]; then
         KEY=$(grep -E "^OPENROUTER_API_KEY=" "$INSTALL_DIR/.env" | cut -d= -f2)
-        if [ -z "$KEY" ] || [ "$KEY" = "sk-or-..." ]; then
-            echo ""
-            echo -e "${YELLOW}┌─────────────────────────────────────────────┐${NC}"
-            echo -e "${YELLOW}│  API Key Required                           │${NC}"
-            echo -e "${YELLOW}│                                             │${NC}"
-            echo -e "${YELLOW}│  Get yours at: https://openrouter.ai/keys   │${NC}"
-            echo -e "${YELLOW}│                                             │${NC}"
-            echo -e "${YELLOW}│  Then edit: $INSTALL_DIR/.env${NC}"
-            echo -e "${YELLOW}│  Set: OPENROUTER_API_KEY=sk-or-...          │${NC}"
-            echo -e "${YELLOW}└─────────────────────────────────────────────┘${NC}"
+        if [ -n "$KEY" ] && [ "$KEY" != "sk-or-..." ]; then
+            echo -e "${GREEN}✓ API key already configured${NC}"
+            return
         fi
+    fi
+
+    # Prompt for API key
+    echo -ne "${CYAN}Paste your OpenRouter API key (or press Enter to skip): ${NC}"
+    read -r API_KEY
+
+    if [ -n "$API_KEY" ]; then
+        # Write .env with the key
+        cat > "$INSTALL_DIR/.env" << ENVEOF
+# ULTIMATE — Living Intelligence Entity
+# API Key configured during installation
+
+# OpenRouter API Key
+OPENROUTER_API_KEY=$API_KEY
+
+# Model (default: deepseek/deepseek-v4-flash:free)
+# ULTIMATE_MODEL=deepseek/deepseek-v4-flash:free
+
+# Alternative: Anthropic direct
+# ANTHROPIC_API_KEY=sk-ant-...
+
+# Force plain console mode
+# ULTIMATE_PLAIN=1
+ENVEOF
+        echo -e "${GREEN}✓ API key saved to $INSTALL_DIR/.env${NC}"
+    else
+        echo -e "${YELLOW}⚠ Skipped. Configure later: nano $INSTALL_DIR/.env${NC}"
     fi
 }
 
