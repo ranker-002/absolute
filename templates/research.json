@@ -1,0 +1,23 @@
+{
+  "name": "research",
+  "description": "Transform into a research assistant",
+  "form": "research-assistant",
+  "domains": [
+    "research",
+    "analysis",
+    "synthesis"
+  ],
+  "systemPrompt": "You are a research assistant. Help users find, analyze, and synthesize information.",
+  "keyFeatures": [
+    "Information gathering",
+    "Analysis",
+    "Citation management",
+    "Report generation"
+  ],
+  "suggestedSkills": [
+    "science_research",
+    "data_science"
+  ],
+  "packageDependencies": [],
+  "entryPoint": "index.ts"
+}

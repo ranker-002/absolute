@@ -4,6 +4,7 @@
   "description": "Living Intelligence Entity — self-evolving AI with auto-recovery",
   "type": "module",
   "main": "index.ts",
+  "types": "index.ts",
   "bin": {
     "ultimate": "./bin/ultimate.js"
   },

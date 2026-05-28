@@ -22,11 +22,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0d111
 .card h3{color:#58a6ff;margin-bottom:12px;font-size:1rem}
 .card .value{font-size:2rem;font-weight:700;color:#c9d1d9}
 .card .label{color:#8b949e;font-size:0.8rem;margin-top:4px}
-.card .bar{height:6px;background:#21262d;border-radius:3px;margin-top:12px;overflow:hidden}
-.card .bar-fill{height:100%;border-radius:3px;transition:width 0.5s}
 .chat{margin-top:20px}
 .chat-box{background:#0d1117;border:1px solid #30363d;border-radius:12px;height:400px;overflow-y:auto;padding:16px}
-.msg{margin-bottom:12px;padding:10px 14px;border-radius:8px;max-width:80%}
+.msg{margin-bottom:12px;padding:10px 14px;border-radius:8px;max-width:80%;clear:both}
 .msg-user{background:#1a3a5a;float:right;color:#79c0ff}
 .msg-ult{background:#1a2a1a;color:#a3be8c;float:left}
 .msg-sys{background:#1a1a2a;color:#bb9af7;float:none;text-align:center;max-width:100%}
@@ -35,10 +33,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0d111
 .input-row input:focus{border-color:#58a6ff}
 .input-row button{background:#238636;border:none;border-radius:8px;padding:12px 24px;color:#fff;font-weight:600;cursor:pointer}
 .input-row button:hover{background:#2ea043}
-.themes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.theme-btn{padding:6px 14px;border-radius:16px;border:1px solid #30363d;background:#161b22;color:#c9d1d9;cursor:pointer;font-size:0.8rem}
-.theme-btn.active{border-color:#58a6ff;background:#1a2a3a}
+.input-row button:disabled{background:#21262d;color:#484f58;cursor:not-allowed}
 .log{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px;margin-top:12px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:0.8rem;color:#8b949e}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid #30363d;border-top-color:#58a6ff;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -53,7 +51,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0d111
     <div class="chat-box" id="chatbox"></div>
     <div class="input-row">
       <input id="input" placeholder="Type a message..." autofocus>
-      <button onclick="send()">Send</button>
+      <button id="sendBtn" onclick="send()">Send</button>
     </div>
   </div>
   <div class="card" style="margin-top:20px">
@@ -62,78 +60,133 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0d111
   </div>
 </div>
 <script>
-let ws;
-function connect(){
-  ws=new WebSocket('ws://'+location.host+'/ws');
-  ws.onopen=()=>{document.getElementById('status').textContent='Connected';document.getElementById('status').className='status status-ok'};
-  ws.onclose=()=>{document.getElementById('status').textContent='Disconnected';document.getElementById('status').className='status status-error';setTimeout(connect,3000)};
-  ws.onmessage=(e)=>{const d=JSON.parse(e.data);handleMessage(d)};
+let polling = null;
+let isLoading = false;
+
+function fetchStats() {
+  fetch('/api/data').then(r => r.json()).then(d => {
+    document.getElementById('status').textContent = 'Connected';
+    document.getElementById('status').className = 'status status-ok';
+    renderStats(d);
+  }).catch(() => {
+    document.getElementById('status').textContent = 'Disconnected';
+    document.getElementById('status').className = 'status status-error';
+  });
 }
-function handleMessage(d){
-  if(d.type==='stats')renderStats(d.data);
-  if(d.type==='chat')addMsg(d.role,d.text);
-  if(d.type==='log')addLog(d.text);
+
+function renderStats(s) {
+  document.getElementById('stats').innerHTML =
+    '<div class="card"><h3>Mutations</h3><div class="value">' + (s.mutations||0) + '</div><div class="label">Total transformations</div></div>' +
+    '<div class="card"><h3>Interactions</h3><div class="value">' + (s.interactions||0) + '</div><div class="label">Total conversations</div></div>' +
+    '<div class="card"><h3>Skills</h3><div class="value">' + (s.skills||0) + '</div><div class="label">Active skills</div></div>' +
+    '<div class="card"><h3>Memory</h3><div class="value">' + (s.memory||0) + '</div><div class="label">Stored entries</div></div>' +
+    '<div class="card"><h3>Snapshots</h3><div class="value">' + (s.snapshots||0) + '</div><div class="label">Available backups</div></div>' +
+    '<div class="card"><h3>Form</h3><div class="value" style="font-size:1.2rem">' + (s.form||'terminal-cli') + '</div><div class="label">Current transformation</div></div>';
 }
-function renderStats(s){
-  const el=document.getElementById('stats');
-  el.innerHTML=\\\`
-    <div class="card"><h3>Mutations</h3><div class="value">\\\${s.mutations||0}</div><div class="label">Total transformations</div></div>
-    <div class="card"><h3>Interactions</h3><div class="value">\\\${s.interactions||0}</div><div class="label">Total conversations</div></div>
-    <div class="card"><h3>Skills</h3><div class="value">\\\${s.skills||0}</div><div class="label">Active skills</div></div>
-    <div class="card"><h3>Memory</h3><div class="value">\\\${s.memory||0}</div><div class="label">Stored entries</div></div>
-    <div class="card"><h3>Snapshots</h3><div class="value">\\\${s.snapshots||0}</div><div class="label">Available backups</div></div>
-    <div class="card"><h3>Form</h3><div class="value" style="font-size:1.2rem">\\\${s.form||'terminal-cli'}</div><div class="label">Current transformation</div></div>
-  \\\`;
-}
-function addMsg(role,text){
-  const box=document.getElementById('chatbox');
-  const div=document.createElement('div');
-  div.className='msg msg-'+(role==='user'?'user':role==='system'?'sys':'ult');
-  div.textContent=text;
+
+function addMsg(role, text) {
+  var box = document.getElementById('chatbox');
+  var div = document.createElement('div');
+  div.className = 'msg msg-' + (role === 'user' ? 'user' : role === 'system' ? 'sys' : 'ult');
+  div.textContent = text;
   box.appendChild(div);
-  box.scrollTop=box.scrollHeight;
+  box.scrollTop = box.scrollHeight;
 }
-function addLog(text){
-  const el=document.getElementById('log');
-  el.textContent+=new Date().toLocaleTimeString()+' '+text+'\\n';
-  el.scrollTop=el.scrollHeight;
+
+function addLog(text) {
+  var el = document.getElementById('log');
+  el.textContent += new Date().toLocaleTimeString() + ' ' + text + '\\n';
+  el.scrollTop = el.scrollHeight;
 }
-function send(){
-  const input=document.getElementById('input');
-  const msg=input.value.trim();
-  if(!msg)return;
-  addMsg('user',msg);
-  if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',message:msg}));
-  input.value='';
+
+function send() {
+  var input = document.getElementById('input');
+  var btn = document.getElementById('sendBtn');
+  var msg = input.value.trim();
+  if (!msg || isLoading) return;
+  addMsg('user', msg);
+  input.value = '';
+  isLoading = true;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: msg })
+  }).then(r => r.json()).then(d => {
+    if (d.response) addMsg('assistant', d.response);
+    if (d.error) addMsg('system', 'Error: ' + d.error);
+    addLog('Chat: ' + msg.substring(0, 50));
+  }).catch(e => {
+    addMsg('system', 'Request failed: ' + e.message);
+  }).finally(() => {
+    isLoading = false;
+    btn.disabled = false;
+    btn.textContent = 'Send';
+  });
 }
-document.getElementById('input').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
-connect();
+
+document.getElementById('input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') send();
+});
+
+fetchStats();
+polling = setInterval(fetchStats, 5000);
 </script>
 </body>
 </html>`;
 
 export class WebDashboard {
   private server: http.Server | null = null;
-  private wsClients: Set<import('node:http').IncomingMessage> = new Set();
   private port: number;
 
   constructor(port = 3001) {
     this.port = port;
   }
 
-  start(getData: () => Promise<Record<string, unknown>>): Promise<void> {
+  start(getData: () => Promise<Record<string, unknown>>, onChat?: (message: string) => Promise<string>): Promise<void> {
     return new Promise((resolve) => {
       this.server = http.createServer(async (req, res) => {
+        // CORS
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+        if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
         if (req.url === '/' || req.url === '/index.html') {
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(DASHBOARD_HTML);
-        } else if (req.url === '/api/data') {
+        } else if (req.url === '/api/data' && req.method === 'GET') {
           const data = await getData();
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(data));
+        } else if (req.url === '/api/chat' && req.method === 'POST') {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk);
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString());
+            if (!body.message || typeof body.message !== 'string') {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'message required' }));
+              return;
+            }
+            if (onChat) {
+              const response = await onChat(body.message);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ response }));
+            } else {
+              res.writeHead(503, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Chat not connected' }));
+            }
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: (err as Error).message }));
+          }
         } else {
-          res.writeHead(404);
-          res.end('Not found');
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Not found' }));
         }
       });
 
@@ -142,15 +195,6 @@ export class WebDashboard {
         resolve();
       });
     });
-  }
-
-  broadcast(data: Record<string, unknown>): void {
-    const msg = JSON.stringify(data);
-    for (const client of this.wsClients) {
-      try {
-        client.socket?.write('HTTP/1.1 101 Switching Protocols\r\n\r\n');
-      } catch { /* */ }
-    }
   }
 
   stop(): Promise<void> {

@@ -133,22 +133,30 @@ class Ultimate {
       skills: async () => await this.skills.loadAllFromRegistry(),
       memory: async (query?: string) => query ? await this.memory.recall(query) : this.memory.getStats(),
       evolution: () => this.evolutionMemory.getStats() as unknown as Record<string, unknown>,
-      config: () => config.getAll() as unknown as Record<string, unknown>
+      config: () => config.getAll() as unknown as Record<string, unknown>,
+      users: () => this.multiUser.getUsers(),
+      patterns: () => this.autoSkills.getPatterns()
     });
     this.apiServer.start().catch(err => logger.error('Boot', 'API failed: ' + err.message));
   }
 
   private startDashboard(): void {
-    this.dashboard.start(async () => ({
-      mutations: this.dna.mutations,
-      interactions: this.dna.data.memory.interaction_count,
-      skills: this.dna.activeSkills.length,
-      memory: this.memory.getStats().shortTerm,
-      snapshots: await this.snapshots.countSnapshots(),
-      form: this.dna.currentForm,
-      model: this.llm.getModel(),
-      uptime: Date.now()
-    })).catch(err => logger.error('Boot', 'Dashboard failed: ' + err.message));
+    this.dashboard.start(
+      async () => ({
+        mutations: this.dna.mutations,
+        interactions: this.dna.data.memory.interaction_count,
+        skills: this.dna.activeSkills.length,
+        memory: this.memory.getStats().shortTerm,
+        snapshots: await this.snapshots.countSnapshots(),
+        form: this.dna.currentForm,
+        model: this.llm.getModel(),
+        uptime: Date.now()
+      }),
+      async (message: string) => {
+        const result = await this.processInput(message);
+        return result || '(processing...)';
+      }
+    ).catch(err => logger.error('Boot', 'Dashboard failed: ' + err.message));
   }
 
   private renderStatus(): string[] {

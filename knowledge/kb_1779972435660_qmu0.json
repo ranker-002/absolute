@@ -1,0 +1,12 @@
+{
+  "id": "kb_1779972435660_qmu0",
+  "createdAt": 1779972435660,
+  "updatedAt": 1779972435660,
+  "title": "Transformation Best Practices",
+  "content": "When transforming ULTIMATE:\n1. Always create a snapshot first\n2. Validate TypeScript syntax before writing\n3. Keep core/dna.json, core/dna.ts, core/snapshot.ts, memory/ untouched\n4. Run tests after transformation\n5. Auto-rollback if tests fail\n6. Commit to git after successful transformation\n7. Record lessons learned in evolution memory",
+  "tags": [
+    "transformation",
+    "best-practices",
+    "safety"
+  ]
+}

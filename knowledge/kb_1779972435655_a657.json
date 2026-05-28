@@ -1,0 +1,12 @@
+{
+  "id": "kb_1779972435655_a657",
+  "createdAt": 1779972435655,
+  "updatedAt": 1779972435655,
+  "title": "ULTIMATE Architecture",
+  "content": "ULTIMATE is a self-evolving AI entity built in TypeScript.\nCore modules: DNA, IntentEngine, Transformer, SkillActivator, EvolutionLoop, LLMEngine, SnapshotManager.\nUI: blessed-based TUI with 10 themes.\nMemory: short-term (50 entries) + long-term (200 keys) + patterns.\nSkills: synthesizable on-the-fly via LLM.\nSelf-transformation: snapshot → LLM codegen → validate → write → relaunch.",
+  "tags": [
+    "architecture",
+    "typescript",
+    "self-evolution"
+  ]
+}

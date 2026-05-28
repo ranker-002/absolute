@@ -1,0 +1,11 @@
+[
+  {
+    "id": "default",
+    "name": "Admin",
+    "role": "admin",
+    "createdAt": 1779972435638,
+    "lastSeen": 1779972435638,
+    "preferences": {},
+    "interactionCount": 0
+  }
+]

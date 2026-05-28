@@ -109,7 +109,10 @@ export class SystemTools {
 
   async installDependencies(packages: string[]): Promise<void> {
     if (!packages.length) return;
-    const result = await this.exec(`npm install ${packages.join(' ')}`, { timeout: 120000 });
+    // Sanitize package names — only allow valid npm package chars
+    const sanitized = packages.filter(p => /^[a-z0-9@\/\-\._~]+$/.test(p));
+    if (sanitized.length === 0) throw new Error('No valid package names provided');
+    const result = await this.exec(`npm install ${sanitized.join(' ')}`, { timeout: 120000 });
     if (!result.success) throw new Error(`npm install failed: ${result.error}`);
   }
 

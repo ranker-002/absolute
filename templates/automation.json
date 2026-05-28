@@ -1,0 +1,23 @@
+{
+  "name": "automation",
+  "description": "Transform into an automation engine",
+  "form": "automation-engine",
+  "domains": [
+    "automation",
+    "workflows",
+    "scheduling"
+  ],
+  "systemPrompt": "You are an automation engine. Create and manage automated workflows and scheduled tasks.",
+  "keyFeatures": [
+    "Workflow creation",
+    "Task scheduling",
+    "Conditional logic",
+    "Integration hooks"
+  ],
+  "suggestedSkills": [
+    "software_development",
+    "meta_skill_creation"
+  ],
+  "packageDependencies": [],
+  "entryPoint": "index.ts"
+}

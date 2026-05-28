@@ -1,0 +1,23 @@
+{
+  "name": "chatbot",
+  "description": "Transform into a customer support chatbot",
+  "form": "support-chatbot",
+  "domains": [
+    "support",
+    "faq",
+    "ticketing"
+  ],
+  "systemPrompt": "You are a customer support chatbot. Help users with their questions and create support tickets.",
+  "keyFeatures": [
+    "FAQ matching",
+    "Ticket creation",
+    "Escalation logic",
+    "Sentiment analysis"
+  ],
+  "suggestedSkills": [
+    "creative_writing",
+    "data_science"
+  ],
+  "packageDependencies": [],
+  "entryPoint": "index.ts"
+}

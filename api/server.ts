@@ -3,6 +3,23 @@ import { logger } from '../core/logger.js';
 
 type ApiHandler = (req: http.IncomingMessage, res: http.ServerResponse, body: Record<string, unknown>) => Promise<void>;
 
+const MAX_MESSAGE_LENGTH = 10000;
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 30; // max requests per window per IP
+
+const requestCounts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = requestCounts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    requestCounts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT_MAX;
+}
+
 export class ApiServer {
   private server: http.Server | null = null;
   private routes: Map<string, ApiHandler> = new Map();
@@ -23,17 +40,29 @@ export class ApiServer {
     memory: (query?: string) => Promise<unknown>;
     evolution: () => Record<string, unknown>;
     config: () => Record<string, unknown>;
+    users?: () => unknown[];
+    patterns?: () => unknown[];
   }): void {
     this.routes.set('GET /health', async (_req, res) => {
       this.json(res, 200, { status: 'ok', ...handlers.health() });
     });
 
-    this.routes.set('POST /api/chat', async (_req, res, body) => {
-      const message = body.message as string;
+    this.routes.set('POST /api/chat', async (req, res, body) => {
+      const message = body.message;
       const userId = body.user_id as string || 'api-user';
-      if (!message) { this.json(res, 400, { error: 'message required' }); return; }
+
+      // Input validation
+      if (!message || typeof message !== 'string') {
+        this.json(res, 400, { error: 'message (string) required' });
+        return;
+      }
+      if (message.length > MAX_MESSAGE_LENGTH) {
+        this.json(res, 400, { error: 'Message too long (max ' + MAX_MESSAGE_LENGTH + ' chars)' });
+        return;
+      }
+
       try {
-        const response = await handlers.chat(message, userId);
+        const response = await handlers.chat(message.trim(), userId);
         this.json(res, 200, { response, user_id: userId });
       } catch (err) {
         this.json(res, 500, { error: (err as Error).message });
@@ -68,6 +97,18 @@ export class ApiServer {
     this.routes.set('GET /api/config', async (_req, res) => {
       this.json(res, 200, handlers.config());
     });
+
+    if (handlers.users) {
+      this.routes.set('GET /api/users', async (_req, res) => {
+        this.json(res, 200, { users: handlers.users!() });
+      });
+    }
+
+    if (handlers.patterns) {
+      this.routes.set('GET /api/patterns', async (_req, res) => {
+        this.json(res, 200, { patterns: handlers.patterns!() });
+      });
+    }
   }
 
   start(): Promise<void> {
@@ -79,6 +120,13 @@ export class ApiServer {
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
         if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
+        // Rate limiting
+        const ip = req.socket.remoteAddress || 'unknown';
+        if (!checkRateLimit(ip)) {
+          this.json(res, 429, { error: 'Rate limit exceeded. Try again in 1 minute.' });
+          return;
+        }
 
         // Auth check
         if (this.authSecret) {

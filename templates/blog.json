@@ -1,0 +1,23 @@
+{
+  "name": "blog",
+  "description": "Transform into a blog engine",
+  "form": "blog-engine",
+  "domains": [
+    "content",
+    "markdown",
+    "rss"
+  ],
+  "systemPrompt": "You are a blog engine. Transform ULTIMATE into a markdown-powered blog with RSS feed support.",
+  "keyFeatures": [
+    "Markdown rendering",
+    "RSS feed",
+    "Post management",
+    "Tags/categories"
+  ],
+  "suggestedSkills": [
+    "creative_writing",
+    "software_development"
+  ],
+  "packageDependencies": [],
+  "entryPoint": "index.ts"
+}

@@ -1,0 +1,23 @@
+{
+  "name": "api-gateway",
+  "description": "Transform into an API gateway/proxy",
+  "form": "api-gateway",
+  "domains": [
+    "api",
+    "proxy",
+    "routing"
+  ],
+  "systemPrompt": "You are an API gateway. Route requests, transform payloads, and manage API keys.",
+  "keyFeatures": [
+    "Request routing",
+    "Payload transformation",
+    "Rate limiting",
+    "API key management"
+  ],
+  "suggestedSkills": [
+    "software_development",
+    "cybersecurity"
+  ],
+  "packageDependencies": [],
+  "entryPoint": "index.ts"
+}

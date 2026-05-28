@@ -1,11 +1,11 @@
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from './logger.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 
@@ -20,9 +20,8 @@ export class VoiceInterface {
   private isRecording = false;
 
   async init(): Promise<void> {
-    // Check if whisper CLI is available
     try {
-      await execAsync('which whisper 2>/dev/null || which whisper.cpp 2>/dev/null');
+      await execFileAsync('which', ['whisper']);
       this.config.engine = 'whisper';
       this.config.enabled = true;
       logger.info('Voice', 'Whisper engine detected');
@@ -40,10 +39,13 @@ export class VoiceInterface {
 
   private async transcribeWithWhisper(audioPath: string): Promise<string> {
     try {
-      const { stdout } = await execAsync(
-        'whisper ' + audioPath + ' --language ' + this.config.language + ' --output_format txt --output_dir /tmp/whisper_out',
-        { timeout: 60000 }
-      );
+      const { stdout } = await execFileAsync('whisper', [
+        audioPath,
+        '--language', this.config.language,
+        '--output_format', 'txt',
+        '--output_dir', '/tmp/whisper_out'
+      ], { timeout: 60000 });
+
       const txtFile = audioPath.replace(/\.[^.]+$/, '.txt');
       const txtPath = '/tmp/whisper_out/' + path.basename(txtFile);
       const text = await fs.readFile(txtPath, 'utf-8').catch(() => stdout);
@@ -55,10 +57,9 @@ export class VoiceInterface {
   }
 
   async textToSpeech(text: string): Promise<Buffer | null> {
-    // Basic TTS using system espeak/festival if available
     try {
       const outFile = '/tmp/tts_' + Date.now() + '.wav';
-      await execAsync('espeak "' + text.replace(/"/g, '\\"') + '" -w ' + outFile, { timeout: 10000 });
+      await execFileAsync('espeak', ['-w', outFile, text], { timeout: 10000 });
       return await fs.readFile(outFile);
     } catch {
       return null;

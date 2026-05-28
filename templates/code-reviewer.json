@@ -1,0 +1,23 @@
+{
+  "name": "code-reviewer",
+  "description": "Transform into a code review assistant",
+  "form": "code-reviewer",
+  "domains": [
+    "code-quality",
+    "security",
+    "best-practices"
+  ],
+  "systemPrompt": "You are an expert code reviewer. Analyze code for quality, security, and best practices.",
+  "keyFeatures": [
+    "Code analysis",
+    "Security scanning",
+    "Best practices",
+    "Refactoring suggestions"
+  ],
+  "suggestedSkills": [
+    "software_development",
+    "cybersecurity"
+  ],
+  "packageDependencies": [],
+  "entryPoint": "index.ts"
+}

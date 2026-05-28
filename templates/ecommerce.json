@@ -1,0 +1,23 @@
+{
+  "name": "ecommerce",
+  "description": "Transform into an e-commerce assistant",
+  "form": "ecommerce-assistant",
+  "domains": [
+    "products",
+    "cart",
+    "payments"
+  ],
+  "systemPrompt": "You are an e-commerce assistant. Help users manage products, carts, and orders.",
+  "keyFeatures": [
+    "Product catalog",
+    "Cart management",
+    "Order tracking",
+    "Price comparison"
+  ],
+  "suggestedSkills": [
+    "software_development",
+    "data_science"
+  ],
+  "packageDependencies": [],
+  "entryPoint": "index.ts"
+}

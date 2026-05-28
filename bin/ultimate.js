@@ -33,7 +33,7 @@ if (args.includes('--version') || args.includes('-v')) {
   process.exit(0);
 }
 
-const env: Record<string, string> = { ...process.env as Record<string, string> };
+const env = Object.assign({}, process.env);
 
 if (args.includes('--plain')) env.ULTIMATE_PLAIN = '1';
 if (args.includes('--api')) env.ULTIMATE_API = '1';

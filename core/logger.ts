@@ -16,7 +16,7 @@ export interface LogEntry {
   data?: unknown;
 }
 
-class Logger {
+export class Logger {
   private level: LogLevel = 'info';
   private entries: LogEntry[] = [];
   private maxEntries = 500;

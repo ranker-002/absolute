@@ -210,7 +210,11 @@ const SLASH_COMMANDS = [
   '/status', '/clear', '/theme', '/help', '/exit', '/quit',
   '/memory', '/recall', '/snapshots', '/snapshot', '/skills',
   '/deactivate', '/model', '/config', '/export', '/import',
-  '/log', '/errors', '/plugin', '/diff', '/rollback'
+  '/log', '/errors', '/plugin', '/diff', '/rollback',
+  '/tests', '/health', '/evolution', '/git', '/knowledge',
+  '/templates', '/template', '/sessions', '/cache', '/autorecover',
+  '/marketplace', '/install', '/patterns', '/users', '/user',
+  '/voice', '/sandbox', '/run', '/integrations'
 ];
 
 export interface DashboardData {

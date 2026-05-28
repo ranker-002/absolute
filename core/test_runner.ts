@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SystemTools } from './system_tools.js';
@@ -117,7 +118,7 @@ export class TestRunner {
             const resolvedPath = path.join(path.dirname(fullPath), match[1]);
             const extensions = ['.ts', '.js', '.json'];
             const found = extensions.some(ext => {
-              try { require('fs').accessSync(resolvedPath + ext); return true; } catch { return false; }
+              try { fsSync.accessSync(resolvedPath + ext); return true; } catch { return false; }
             });
             if (!found) {
               errors.push(`Import not found: ${file} → ${match[1]}`);

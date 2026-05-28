@@ -1,0 +1,23 @@
+{
+  "name": "dashboard",
+  "description": "Transform into a data dashboard",
+  "form": "data-dashboard",
+  "domains": [
+    "charts",
+    "analytics",
+    "metrics"
+  ],
+  "systemPrompt": "You are a data dashboard. Visualize data with charts and provide real-time analytics.",
+  "keyFeatures": [
+    "Real-time charts",
+    "Metric tracking",
+    "Data visualization",
+    "Export reports"
+  ],
+  "suggestedSkills": [
+    "data_science",
+    "software_development"
+  ],
+  "packageDependencies": [],
+  "entryPoint": "index.ts"
+}

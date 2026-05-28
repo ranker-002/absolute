@@ -1,0 +1,12 @@
+{
+  "id": "kb_1779972435670_osp0",
+  "createdAt": 1779972435671,
+  "updatedAt": 1779972435671,
+  "title": "French Intent Patterns",
+  "content": "French transformation triggers:\n- \"deviens X\" → become X\n- \"transforme-toi en X\" → transform into X\n- \"je veux une app X\" → I want an X app\n- \"crée-toi X\" → create yourself X\n- \"change de forme\" → change form",
+  "tags": [
+    "intent",
+    "french",
+    "patterns"
+  ]
+}
