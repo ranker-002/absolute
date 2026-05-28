@@ -40,7 +40,7 @@ import { PromptOptimizer, SkillComposer, StrategySelector, FailureAnalyzer } fro
 import { DeployManager, SaaSServer, WebhookManager, PluginSDK } from './core/deploy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.join(__dirname, '..');
+const ROOT = __dirname;
 
 const C = {
   reset: '\x1b[0m',
