@@ -34,6 +34,12 @@ import { MultiUserManager } from './core/multi_user.js';
 import { AutoSkillGenerator } from './core/auto_skills.js';
 import { VoiceInterface } from './core/voice.js';
 import { WebDashboard } from './web/dashboard.js';
+import { AgentRuntime } from './core/agent_runtime.js';
+import { FileOps, ShellOps, HttpOps, ProcessManager, Database } from './core/world_tools.js';
+import { KnowledgeEngine } from './core/knowledge_engine.js';
+import { ImageAnalyzer, DocumentGenerator, DataViz, VoiceConversation } from './core/multimodal.js';
+import { PromptOptimizer, SkillComposer, StrategySelector, FailureAnalyzer } from './core/meta_evolution.js';
+import { DeployManager, SaaSServer, WebhookManager, PluginSDK } from './core/deploy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -64,6 +70,25 @@ class Ultimate {
   private autoSkills = new AutoSkillGenerator();
   private voice = new VoiceInterface();
   private dashboard = new WebDashboard(parseInt(process.env.ULTIMATE_DASHBOARD_PORT || '3001'));
+  private agentRuntime = new AgentRuntime();
+  private fileOps = new FileOps();
+  private shellOps = new ShellOps();
+  private httpOps = new HttpOps();
+  private processManager = new ProcessManager();
+  private database = new Database();
+  private knowledgeEngine = new KnowledgeEngine();
+  private imageAnalyzer = new ImageAnalyzer();
+  private docGenerator = new DocumentGenerator();
+  private dataViz = new DataViz();
+  private voiceConversation = new VoiceConversation();
+  private promptOptimizer = new PromptOptimizer();
+  private skillComposer = new SkillComposer();
+  private strategySelector = new StrategySelector();
+  private failureAnalyzer = new FailureAnalyzer();
+  private deployManager = new DeployManager();
+  private saasServer = new SaaSServer();
+  private webhookManager = new WebhookManager();
+  private pluginSDK = new PluginSDK();
   private dna!: DNA;
   private ui: TerminalUI | null = null;
   private busy = false;
@@ -87,6 +112,9 @@ class Ultimate {
     await this.integrations.init();
     await this.multiUser.init();
     await this.voice.init();
+    await this.agentRuntime.init();
+    await this.database.init();
+    await this.knowledgeEngine.init();
 
     // Start API server if enabled
     if (process.env.ULTIMATE_API === '1') {
@@ -264,6 +292,24 @@ class Ultimate {
         if (input.startsWith('/run ')) { await this.runInSandbox(input.slice(5).trim()); return; }
         if (input === '/patterns') { this.showPatterns(); return; }
         if (input === '/integrations') { this.showIntegrations(); return; }
+        if (input === '/agent') { this.showAgentStatus(); return; }
+        if (input.startsWith('/task ')) { await this.createAgentTask(input.slice(6).trim()); return; }
+        if (input === '/tasks') { this.showAgentTasks(); return; }
+        if (input === '/reflect') { this.showReflections(); return; }
+        if (input.startsWith('/ingest ')) { await this.ingestDocument(input.slice(8).trim()); return; }
+        if (input.startsWith('/search ')) { await this.searchKnowledge(input.slice(8).trim()); return; }
+        if (input === '/docs') { this.showDocuments(); return; }
+        if (input.startsWith('/deploy ')) { await this.deployApp(input.slice(8).trim()); return; }
+        if (input === '/deploy') { this.showDeployTargets(); return; }
+        if (input.startsWith('/webhook ')) { await this.addWebhook(input.slice(9).trim()); return; }
+        if (input === '/webhooks') { this.showWebhooks(); return; }
+        if (input.startsWith('/plugin ')) { await this.createPlugin(input.slice(8).trim()); return; }
+        if (input === '/optimize') { await this.optimizePrompts(); return; }
+        if (input === '/compose') { this.showCompositionHelp(); return; }
+        if (input === '/strategy') { this.showStrategyHelp(); return; }
+        if (input === '/failures') { this.showFailures(); return; }
+        if (input === '/saas') { this.showSaaS(); return; }
+        if (input.startsWith('/tenant ')) { await this.createTenant(input.slice(8).trim()); return; }
         await this.handleInput(input);
       },
       () => process.exit(0)
@@ -323,12 +369,28 @@ class Ultimate {
       '  /voice            Voice status',
       '  /sandbox          Sandbox help',
       '  /run <code>       Run code in sandbox',
-      '═══ Skills & Knowledge ═══',
-      '  /skills           List all skills',
-      '  /deactivate <s>   Deactivate a skill',
-      '  /knowledge [q]    Search knowledge base',
-      '  /templates        List transformation templates',
-      '  /template <name>  Show template details',
+      '═══ Agent Runtime ═══',
+      '  /agent            Agent status',
+      '  /task <desc>      Create a task',
+      '  /tasks            Show all tasks',
+      '  /reflect          Show reflections',
+      '═══ Knowledge ═══',
+      '  /ingest <file>    Ingest a document',
+      '  /search <query>   Search knowledge',
+      '  /docs             List documents',
+      '═══ Deployment ═══',
+      '  /deploy           Show deploy targets',
+      '  /deploy <target>  Deploy to target',
+      '  /webhooks         List webhooks',
+      '  /webhook <url>    Register webhook',
+      '  /saas             SaaS status',
+      '  /tenant <name>    Create tenant',
+      '═══ Meta ═══',
+      '  /optimize         Optimize prompts',
+      '  /compose          Skill composition',
+      '  /strategy         Strategy help',
+      '  /failures         Failure reports',
+      '  /plugin <name>    Create plugin scaffold',
       '═══ System ═══',
       '  /model [name]     Show/set model',
       '  /config           Show config',
@@ -502,16 +564,6 @@ class Ultimate {
     this.ui?.appendDivider();
   }
 
-  private async searchKnowledge(query: string): Promise<void> {
-    const entries = await this.knowledgeBase.search(query);
-    this.ui?.appendDivider();
-    this.ui?.appendSystem('Knowledge: "' + query + '" — ' + entries.length + ' results');
-    for (const e of entries.slice(0, 5)) {
-      this.ui?.appendInfo('{bold}' + e.title + '{/bold}: ' + e.content.substring(0, 100) + '...');
-    }
-    this.ui?.appendDivider();
-  }
-
   private async showKnowledge(): Promise<void> {
     const entries = await this.knowledgeBase.getAll();
     this.ui?.appendDivider();
@@ -661,6 +713,203 @@ class Ultimate {
       }
     }
     this.ui?.appendDivider();
+  }
+
+  private showAgentStatus(): void {
+    const state = this.agentRuntime.getState();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Agent Runtime{/bold}');
+    this.ui?.appendInfo('  Current task: ' + (state.currentTaskId || 'none'));
+    this.ui?.appendInfo('  Queue: ' + state.taskQueue.length + ' pending');
+    this.ui?.appendInfo('  Completed: ' + state.completedTasks.length);
+    this.ui?.appendInfo('  Failed: ' + state.failedTasks.length);
+    this.ui?.appendInfo('  Active goals: ' + state.activeGoals.length);
+    this.ui?.appendInfo('  Reflections: ' + state.reflectionHistory.length);
+    this.ui?.appendInfo('  Uptime: ' + Math.floor((Date.now() - state.startTime) / 1000) + 's');
+    this.ui?.appendDivider();
+  }
+
+  private async createAgentTask(description: string): Promise<void> {
+    this.ui?.appendSystem('Creating task: ' + description);
+    const tasks = await this.agentRuntime.decomposeGoal(description);
+    this.ui?.appendSuccess('Decomposed into ' + tasks.length + ' sub-tasks');
+    for (const t of tasks) {
+      this.ui?.appendInfo('  [' + t.priority + '] ' + t.description);
+    }
+  }
+
+  private showAgentTasks(): void {
+    const all = this.agentRuntime.getAllTasks();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Agent Tasks{/bold}');
+    if (all.length === 0) {
+      this.ui?.appendInfo('  No tasks');
+    } else {
+      for (const t of all.slice(-15)) {
+        const statusIcon = t.status === 'success' ? '✓' : t.status === 'failed' ? '✗' : t.status === 'running' ? '⟳' : '○';
+        this.ui?.appendInfo('  ' + statusIcon + ' ' + t.description.substring(0, 60) + ' [' + t.status + ']');
+      }
+    }
+    this.ui?.appendDivider();
+  }
+
+  private showReflections(): void {
+    const reflections = this.agentRuntime.getReflections();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Reflections{/bold}');
+    if (reflections.length === 0) {
+      this.ui?.appendInfo('  No reflections yet');
+    } else {
+      for (const r of reflections.slice(-10)) {
+        this.ui?.appendInfo('  ' + r.lesson.substring(0, 80));
+      }
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async ingestDocument(filePath: string): Promise<void> {
+    this.ui?.appendSystem('Ingesting: ' + filePath);
+    try {
+      const content = await this.fileOps.readFile(filePath);
+      const title = path.basename(filePath);
+      const doc = await this.knowledgeEngine.ingestDocument(title, content, filePath);
+      this.ui?.appendSuccess('Ingested: ' + doc.title + ' (' + doc.tags.join(', ') + ')');
+    } catch (err) {
+      this.ui?.appendError('Failed: ' + (err as Error).message);
+    }
+  }
+
+  private async searchKnowledge(query: string): Promise<void> {
+    const results = await this.knowledgeEngine.search(query, 5);
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('Knowledge: "' + query + '" — ' + results.length + ' results');
+    for (const { doc, score } of results) {
+      this.ui?.appendInfo('  [' + score.toFixed(2) + '] ' + doc.title + ': ' + doc.summary.substring(0, 80));
+    }
+    this.ui?.appendDivider();
+  }
+
+  private showDocuments(): void {
+    const docs = this.knowledgeEngine.getAll();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Knowledge Documents{/bold} — ' + docs.length + ' total');
+    for (const d of docs.slice(0, 15)) {
+      this.ui?.appendInfo('  ' + d.title + ' [' + d.tags.join(', ') + '] (used ' + d.accessCount + 'x)');
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async deployApp(target: string): Promise<void> {
+    this.ui?.appendSystem('Deploying to ' + target + '...');
+    this.ui?.appendInfo('Generating deployment files...');
+    const dockerfile = await this.deployManager.generateDockerfile('ultimate', 'node');
+    await this.fileOps.writeFile('Dockerfile.deploy', dockerfile);
+    this.ui?.appendSuccess('Generated Dockerfile.deploy');
+    this.ui?.appendInfo('Run: docker build -f Dockerfile.deploy -t ' + target + ' .');
+  }
+
+  private showDeployTargets(): void {
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Deploy Targets{/bold}');
+    this.ui?.appendInfo('  docker     — Docker container');
+    this.ui?.appendInfo('  kubernetes — K8s manifests');
+    this.ui?.appendInfo('  vercel     — Vercel deployment');
+    this.ui?.appendInfo('  netlify    — Netlify deployment');
+    this.ui?.appendInfo('  railway    — Railway deployment');
+    this.ui?.appendInfo('  flyio      — Fly.io deployment');
+    this.ui?.appendInfo('  manual     — Manual deployment');
+    this.ui?.appendDivider();
+  }
+
+  private async addWebhook(url: string): Promise<void> {
+    const wh = await this.webhookManager.register(url, ['transformation', 'interaction', 'error']);
+    this.ui?.appendSuccess('Webhook registered: ' + wh.url + ' (secret: ' + wh.secret + ')');
+  }
+
+  private showWebhooks(): void {
+    const webhooks = this.webhookManager.getWebhooks();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Webhooks{/bold}');
+    if (webhooks.length === 0) {
+      this.ui?.appendInfo('  No webhooks registered');
+    } else {
+      for (const w of webhooks) {
+        this.ui?.appendInfo('  ' + w.url + ' [' + w.events.join(', ') + '] ' + (w.enabled ? '✓' : '○'));
+      }
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async createPlugin(name: string): Promise<void> {
+    const dir = await this.pluginSDK.createScaffold(name);
+    this.ui?.appendSuccess('Plugin scaffold created: ' + dir);
+  }
+
+  private async optimizePrompts(): Promise<void> {
+    this.ui?.appendSystem('Optimizing prompts...');
+    const optimized = await this.promptOptimizer.optimize('general', 'Be helpful and concise.', [
+      { input: 'Hello', expected: 'Hi! How can I help?' }
+    ]);
+    this.ui?.appendSuccess('Prompt optimized (' + optimized.length + ' chars)');
+  }
+
+  private showCompositionHelp(): void {
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Skill Composition{/bold}');
+    this.ui?.appendInfo('  Compose multiple skills into one unified skill');
+    this.ui?.appendInfo('  Use /skills to see available skills');
+    this.ui?.appendInfo('  Skills are auto-composed when patterns emerge');
+    this.ui?.appendDivider();
+  }
+
+  private showStrategyHelp(): void {
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Strategy Selection{/bold}');
+    this.ui?.appendInfo('  direct    — Do it simply');
+    this.ui?.appendInfo('  decompose — Break into parts');
+    this.ui?.appendInfo('  research  — Learn first');
+    this.ui?.appendInfo('  iterate   — Try and refine');
+    this.ui?.appendInfo('  collaborate — Use multiple tools');
+    this.ui?.appendDivider();
+  }
+
+  private showFailures(): void {
+    const reports = this.failureAnalyzer.getReports(10);
+    const causes = this.failureAnalyzer.getCommonCauses();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Failure Reports{/bold}');
+    if (reports.length === 0) {
+      this.ui?.appendInfo('  No failures recorded');
+    } else {
+      for (const r of reports.slice(-5)) {
+        this.ui?.appendError('  ' + r.task.substring(0, 50) + ': ' + r.rootCause);
+      }
+      if (causes.length > 0) {
+        this.ui?.appendInfo('  Common causes:');
+        for (const c of causes.slice(0, 3)) {
+          this.ui?.appendInfo('    ' + c.cause + ' (' + c.count + 'x)');
+        }
+      }
+    }
+    this.ui?.appendDivider();
+  }
+
+  private showSaaS(): void {
+    const tenants = this.saasServer.getTenants();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}SaaS Mode{/bold}');
+    this.ui?.appendInfo('  Tenants: ' + tenants.length);
+    for (const t of tenants) {
+      this.ui?.appendInfo('    ' + t.name + ' — ' + t.usage.requests + '/' + t.quota.requests + ' requests');
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async createTenant(name: string): Promise<void> {
+    const tenant = await this.saasServer.createTenant(name);
+    this.ui?.appendSuccess('Tenant: ' + tenant.name);
+    this.ui?.appendInfo('  API Key: ' + tenant.apiKey);
+    this.ui?.appendInfo('  Quota: ' + tenant.quota.requests + ' requests, ' + tenant.quota.tokens + ' tokens');
   }
 
   private async handleInput(userMessage: string): Promise<void> {
