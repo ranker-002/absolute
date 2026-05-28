@@ -1,9 +1,11 @@
 {
-  "lastHeartbeat": 1779979542542,
-  "pid": 71234,
-  "startedAt": 1779979512527,
+  "lastHeartbeat": 1779980620708,
+  "pid": 77153,
+  "startedAt": 1779980600704,
   "status": "running",
   "lastForm": "terminal-cli",
-  "bootCount": 1,
-  "crashCount": 0
+  "bootCount": 2,
+  "crashCount": 1,
+  "lastCrash": 1779979512528,
+  "lastCrashError": "Process did not shut down gracefully"
 }
