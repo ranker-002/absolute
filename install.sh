@@ -80,11 +80,9 @@ install_ultimate() {
 setup_bin() {
     mkdir -p "$BIN_DIR"
 
-    cat > "$BIN_DIR/ultimate" << 'BINEOF'
-#!/bin/bash
-exec node --import tsx "$HOME/.ultimate/index.ts" "$@"
-BINEOF
-
+    # Write bin script with resolved install dir
+    echo '#!/bin/bash' > "$BIN_DIR/ultimate"
+    echo "exec npx tsx \"$INSTALL_DIR/index.ts\" \"\$@\"" >> "$BIN_DIR/ultimate"
     chmod +x "$BIN_DIR/ultimate"
 
     # Add to PATH if not already
