@@ -291,7 +291,7 @@ export class TerminalUI {
   private initScreen(): void {
     this.screen = blessed.screen({
       smartCSR: true,
-      title: 'ULTIMATE — Living Intelligence TUI',
+      title: 'ABSOLUTE — Living Intelligence TUI',
       dockBorders: true,
       fullUnicode: true,
       cursor: {
@@ -914,10 +914,10 @@ export class TerminalUI {
   }
 
   exportConversationMarkdown(): string {
-    const lines = ['# ULTIMATE Conversation Export', `Date: ${new Date().toISOString()}`, ''];
+    const lines = ['# ABSOLUTE Conversation Export', `Date: ${new Date().toISOString()}`, ''];
     for (const entry of this.conversationLog) {
       const date = new Date(entry.timestamp).toLocaleString('fr-FR');
-      const role = entry.role === 'user' ? '**You**' : '**ULTIMATE**';
+      const role = entry.role === 'user' ? '**You**' : '**ABSOLUTE**';
       lines.push(`### ${date}`);
       lines.push(`${role}: ${entry.text}`);
       lines.push('');

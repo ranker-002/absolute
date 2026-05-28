@@ -98,6 +98,9 @@ class Ultimate {
     await config.load();
     logger.setLevel(config.get('logLevel'));
 
+    // Check for API key — prompt if missing
+    await this.ensureApiKey();
+
     this.dna = await DNA.load();
     await this.memory.restore();
     await pluginManager.init();
@@ -142,6 +145,72 @@ class Ultimate {
     const hasKey = Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY);
     if (!hasKey) return 'API key missing: set OPENROUTER_API_KEY (.env supported). Get yours at https://openrouter.ai/keys';
     return null;
+  }
+
+  private async ensureApiKey(): Promise<void> {
+    const hasKey = Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY);
+    if (hasKey) return;
+
+    // In plain mode or non-TTY, can't prompt interactively
+    if (process.env.ULTIMATE_PLAIN || !process.stdout.isTTY) {
+      console.log('');
+      console.log('╔══════════════════════════════════════════════════╗');
+      console.log('║  API Key Required                               ║');
+      console.log('║                                                  ║');
+      console.log('║  Get yours FREE at:                              ║');
+      console.log('║  https://openrouter.ai/keys                      ║');
+      console.log('║                                                  ║');
+      console.log('║  Then set it in .env file:                       ║');
+      console.log('║  OPENROUTER_API_KEY=sk-or-...                    ║');
+      console.log('╚══════════════════════════════════════════════════╝');
+      console.log('');
+      process.exit(1);
+    }
+
+    // Interactive mode — prompt for key
+    console.log('');
+    console.log('\x1b[35m╔══════════════════════════════════════════════════╗\x1b[0m');
+    console.log('\x1b[35m║  Welcome to ABSOLUTE — Living Intelligence      ║\x1b[0m');
+    console.log('\x1b[35m╚══════════════════════════════════════════════════╝\x1b[0m');
+    console.log('');
+    console.log('\x1b[33m  Get your FREE API key at:\x1b[0m');
+    console.log('\x1b[36m  https://openrouter.ai/keys\x1b[0m');
+    console.log('');
+
+    const readline = await import('node:readline');
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+    const answer = await new Promise<string>((resolve) => {
+      rl.question('\x1b[36m  Paste your OpenRouter API key (or press Enter to skip): \x1b[0m', (ans) => {
+        rl.close();
+        resolve(ans.trim());
+      });
+    });
+
+    if (answer) {
+      // Write to .env
+      const envPath = path.join(ROOT, '.env');
+      const envContent = `# ABSOLUTE — Living Intelligence Entity
+# API Key configured on first launch
+
+OPENROUTER_API_KEY=${answer}
+
+# Model (default: deepseek/deepseek-v4-flash:free)
+# ULTIMATE_MODEL=deepseek/deepseek-v4-flash:free
+
+# Force plain console mode
+# ULTIMATE_PLAIN=1
+`;
+      await fs.writeFile(envPath, envContent, 'utf-8');
+      process.env.OPENROUTER_API_KEY = answer;
+      console.log('');
+      console.log('\x1b[32m  ✓ API key saved. Starting ABSOLUTE...\x1b[0m');
+      console.log('');
+    } else {
+      console.log('');
+      console.log('\x1b[33m  ⚠ Skipped. Configure later: nano .env\x1b[0m');
+      console.log('');
+    }
   }
 
   private startApiServer(): void {
@@ -326,7 +395,7 @@ class Ultimate {
     this.ui.setStatus(this.renderStatus());
 
     this.ui.appendSystem('╔══════════════════════════════════════════════════════════╗');
-    this.ui.appendSystem('║         ULTIMATE — Living Intelligence Entity          ║');
+    this.ui.appendSystem('║         ABSOLUTE — Living Intelligence Entity          ║');
     this.ui.appendSystem('║       Self-evolving AI with auto-recovery              ║');
     this.ui.appendSystem('╚══════════════════════════════════════════════════════════╝');
     this.ui.appendSystem('');

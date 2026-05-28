@@ -81,9 +81,9 @@ setup_bin() {
     mkdir -p "$BIN_DIR"
 
     # Write bin script with resolved install dir
-    echo '#!/bin/bash' > "$BIN_DIR/ultimate"
-    echo "exec npx tsx \"$INSTALL_DIR/index.ts\" \"\$@\"" >> "$BIN_DIR/ultimate"
-    chmod +x "$BIN_DIR/ultimate"
+    echo '#!/bin/bash' > "$BIN_DIR/absolute"
+    echo "exec npx tsx \"$INSTALL_DIR/index.ts\" \"\$@\"" >> "$BIN_DIR/absolute"
+    chmod +x "$BIN_DIR/absolute"
 
     # Add to PATH if not already
     if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
@@ -104,55 +104,11 @@ setup_bin() {
         fi
     fi
 
-    echo -e "${GREEN}✓ Global command available: ultimate${NC}"
+    echo -e "${GREEN}✓ Global command available: absolute${NC}"
 }
 
-# Setup API key
 setup_config() {
-    echo ""
-    echo -e "${YELLOW}┌─────────────────────────────────────────────┐${NC}"
-    echo -e "${YELLOW}│  OpenRouter API Key Required                │${NC}"
-    echo -e "${YELLOW}│                                             │${NC}"
-    echo -e "${YELLOW}│  Get yours FREE at:                         │${NC}"
-    echo -e "${YELLOW}│  https://openrouter.ai/keys                 │${NC}"
-    echo -e "${YELLOW}└─────────────────────────────────────────────┘${NC}"
-    echo ""
-
-    # Check if key already configured
-    if [ -f "$INSTALL_DIR/.env" ]; then
-        KEY=$(grep -E "^OPENROUTER_API_KEY=" "$INSTALL_DIR/.env" | cut -d= -f2)
-        if [ -n "$KEY" ] && [ "$KEY" != "sk-or-..." ]; then
-            echo -e "${GREEN}✓ API key already configured${NC}"
-            return
-        fi
-    fi
-
-    # Prompt for API key
-    echo -ne "${CYAN}Paste your OpenRouter API key (or press Enter to skip): ${NC}"
-    read -r API_KEY
-
-    if [ -n "$API_KEY" ]; then
-        # Write .env with the key
-        cat > "$INSTALL_DIR/.env" << ENVEOF
-# ULTIMATE — Living Intelligence Entity
-# API Key configured during installation
-
-# OpenRouter API Key
-OPENROUTER_API_KEY=$API_KEY
-
-# Model (default: deepseek/deepseek-v4-flash:free)
-# ULTIMATE_MODEL=deepseek/deepseek-v4-flash:free
-
-# Alternative: Anthropic direct
-# ANTHROPIC_API_KEY=sk-ant-...
-
-# Force plain console mode
-# ULTIMATE_PLAIN=1
-ENVEOF
-        echo -e "${GREEN}✓ API key saved to $INSTALL_DIR/.env${NC}"
-    else
-        echo -e "${YELLOW}⚠ Skipped. Configure later: nano $INSTALL_DIR/.env${NC}"
-    fi
+    echo -e "${GREEN}✓ Config ready at $INSTALL_DIR/.env${NC}"
 }
 
 # Print success
@@ -162,10 +118,10 @@ print_success() {
     echo -e "${GREEN}║          ULTIMATE Installed Successfully!       ║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "  ${CYAN}Run:${NC}    ultimate"
-    echo -e "  ${CYAN}TUI:${NC}    ultimate (in terminal)"
-    echo -e "  ${CYAN}API:${NC}    ULTIMATE_API=1 ultimate"
-    echo -e "  ${CYAN}Plain:${NC}  ULTIMATE_PLAIN=1 ultimate"
+    echo -e "  ${CYAN}Run:${NC}    absolute"
+    echo -e "  ${CYAN}TUI:${NC}    absolute (in terminal)"
+    echo -e "  ${CYAN}API:${NC}    ULTIMATE_API=1 absolute"
+    echo -e "  ${CYAN}Plain:${NC}  ULTIMATE_PLAIN=1 absolute"
     echo ""
     echo -e "  ${CYAN}Config:${NC} $INSTALL_DIR/.env"
     echo -e "  ${CYAN}Dir:${NC}    $INSTALL_DIR"
