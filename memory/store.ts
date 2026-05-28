@@ -40,7 +40,7 @@ export class UniversalMemory {
         longTermTimestamps: loaded.longTermTimestamps || {},
         patterns: loaded.patterns || []
       };
-    } catch {
+    } catch (_e) {
       logger.info('Memory', 'No existing memory found — starting fresh');
     }
   }

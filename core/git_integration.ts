@@ -19,7 +19,7 @@ export class GitIntegration {
       await execFileAsync('git', ['rev-parse', '--is-inside-work-tree']);
       this.isRepo = true;
       logger.info('Git', 'Git repository detected');
-    } catch {
+    } catch (_e) {
       this.isRepo = false;
       logger.info('Git', 'No git repository — creating one');
       await this.initRepo();
@@ -87,7 +87,7 @@ export class GitIntegration {
       const { stdout } = await execFileAsync('git', ['status', '--porcelain']);
       const files = stdout.split('\n').filter(l => l.trim()).map(l => l.substring(3));
       return { clean: files.length === 0, files };
-    } catch {
+    } catch (_e) {
       return { clean: true, files: [] };
     }
   }
@@ -100,24 +100,24 @@ export class GitIntegration {
         const [hash, message, date] = line.split('|');
         return { hash, message, date };
       });
-    } catch {
+    } catch (_e) {
       return [];
     }
   }
 
   async stashChanges(): Promise<boolean> {
     if (!this.isRepo) return false;
-    try { await execFileAsync('git', ['stash']); return true; } catch { return false; }
+    try { await execFileAsync('git', ['stash']); return true; } catch (_e) { return false; }
   }
 
   async popStash(): Promise<boolean> {
     if (!this.isRepo) return false;
-    try { await execFileAsync('git', ['stash', 'pop']); return true; } catch { return false; }
+    try { await execFileAsync('git', ['stash', 'pop']); return true; } catch (_e) { return false; }
   }
 
   async diffstat(): Promise<string> {
     if (!this.isRepo) return '';
-    try { const { stdout } = await execFileAsync('git', ['diff', '--stat']); return stdout; } catch { return ''; }
+    try { const { stdout } = await execFileAsync('git', ['diff', '--stat']); return stdout; } catch (_e) { return ''; }
   }
 
   isGitRepo(): boolean {

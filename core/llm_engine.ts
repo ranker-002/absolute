@@ -195,7 +195,7 @@ export class LLMEngine {
               fullText += delta;
               onToken(delta);
             }
-          } catch {
+          } catch (_e) {
             // Skip malformed JSON
           }
         }

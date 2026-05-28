@@ -35,7 +35,7 @@ export class Integrations {
     try {
       const raw = await fs.readFile(this.configPath, 'utf-8');
       this.integrations = JSON.parse(raw) as IntegrationConfig[];
-    } catch {
+    } catch (_e) {
       this.integrations = [];
     }
   }
@@ -113,7 +113,7 @@ export class Integrations {
       const execAsync = promisify(exec);
       try {
         await execAsync('git add -A && git commit -m "auto: ' + (event.data.summary || 'update') + '"', { cwd: ROOT });
-      } catch { /* nothing to commit */ }
+      } catch (_e) { /* nothing to commit */ }
     }
   }
 

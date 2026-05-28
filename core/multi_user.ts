@@ -34,7 +34,7 @@ export class MultiUserManager {
       const raw = await fs.readFile(USERS_FILE, 'utf-8');
       const data = JSON.parse(raw) as User[];
       for (const u of data) this.users.set(u.id, u);
-    } catch { /* first run */ }
+    } catch (_e) { /* first run */ }
   }
 
   private async save(): Promise<void> {

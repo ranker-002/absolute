@@ -38,9 +38,9 @@ export class KnowledgeEngine {
           const raw = await fs.readFile(path.join(KB_DIR, file), 'utf-8');
           const doc = JSON.parse(raw) as DocEntry;
           this.docs.set(doc.id, doc);
-        } catch { /* skip */ }
+        } catch (_e) { /* skip */ }
       }
-    } catch { /* */ }
+    } catch (_e) { /* */ }
   }
 
   async ingestDocument(title: string, content: string, source: string = 'manual'): Promise<DocEntry> {
@@ -54,7 +54,7 @@ export class KnowledgeEngine {
           maxTokens: 100
         });
         summary = raw;
-      } catch { /* fallback to truncation */ }
+      } catch (_e) { /* fallback to truncation */ }
     }
 
     // Auto-tag
@@ -66,7 +66,7 @@ export class KnowledgeEngine {
         maxTokens: 100
       });
       tags = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
-    } catch {
+    } catch (_e) {
       tags = title.toLowerCase().split(/\s+/).slice(0, 3);
     }
 
@@ -115,7 +115,7 @@ export class KnowledgeEngine {
         const content = await fs.readFile(path.join(ROOT, filePath), 'utf-8');
         const doc = await this.ingestDocument(file.name, content, filePath);
         entries.push(doc);
-      } catch { /* skip */ }
+      } catch (_e) { /* skip */ }
     }
 
     logger.info('Knowledge', 'Ingested codebase: ' + entries.length + ' files');
@@ -173,7 +173,7 @@ export class KnowledgeEngine {
         userPrompt: text.substring(0, 5000),
         maxTokens: 500
       });
-    } catch {
+    } catch (_e) {
       return text.substring(0, 500);
     }
   }
@@ -196,11 +196,11 @@ export class KnowledgeEngine {
               results.push(entry.content.substring(0, 200));
             }
           }
-        } catch { /* skip */ }
+        } catch (_e) { /* skip */ }
       }
 
       return results.slice(-5).join('\n---\n');
-    } catch {
+    } catch (_e) {
       return '';
     }
   }
@@ -243,7 +243,7 @@ export class KnowledgeEngine {
   async delete(id: string): Promise<boolean> {
     if (!this.docs.has(id)) return false;
     this.docs.delete(id);
-    try { await fs.rm(path.join(KB_DIR, id + '.json'), { force: true }); } catch { /* */ }
+    try { await fs.rm(path.join(KB_DIR, id + '.json'), { force: true }); } catch (_e) { /* */ }
     return true;
   }
 }

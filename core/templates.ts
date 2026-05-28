@@ -129,11 +129,11 @@ export class TemplateManager {
           if (template.name && template.form) {
             this.templates.push(template);
           }
-        } catch {
+        } catch (_e) {
           // skip corrupted
         }
       }
-    } catch {
+    } catch (_e) {
       // first run
     }
   }
@@ -143,7 +143,7 @@ export class TemplateManager {
       const filePath = path.join(TEMPLATES_DIR, `${template.name}.json`);
       try {
         await fs.access(filePath);
-      } catch {
+      } catch (_e) {
         await fs.writeFile(filePath, JSON.stringify(template, null, 2), 'utf-8');
       }
     }
@@ -184,7 +184,7 @@ export class TemplateManager {
     this.templates.splice(idx, 1);
     try {
       await fs.rm(path.join(TEMPLATES_DIR, `${name}.json`), { force: true });
-    } catch {
+    } catch (_e) {
       // ignore
     }
     return true;

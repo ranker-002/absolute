@@ -47,7 +47,7 @@ export class PluginManager {
     try {
       const raw = await fs.readFile(path.join(PLUGINS_DIR, 'registry.json'), 'utf-8');
       this.registry = JSON.parse(raw) as PluginRegistry;
-    } catch {
+    } catch (_e) {
       this.registry = { plugins: [] };
       await this.saveRegistry();
     }

@@ -42,7 +42,7 @@ export class EvolutionMemory {
     try {
       const raw = await fs.readFile(EVOLUTION_FILE, 'utf-8');
       this.attempts = JSON.parse(raw) as TransformationAttempt[];
-    } catch {
+    } catch (_e) {
       this.attempts = [];
     }
   }

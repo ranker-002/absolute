@@ -118,7 +118,7 @@ export class TestRunner {
             const resolvedPath = path.join(path.dirname(fullPath), match[1]);
             const extensions = ['.ts', '.js', '.json'];
             const found = extensions.some(ext => {
-              try { fsSync.accessSync(resolvedPath + ext); return true; } catch { return false; }
+              try { fsSync.accessSync(resolvedPath + ext); return true; } catch (_e) { return false; }
             });
             if (!found) {
               errors.push(`Import not found: ${file} → ${match[1]}`);
@@ -126,7 +126,7 @@ export class TestRunner {
           }
         }
         passed++;
-      } catch {
+      } catch (_e) {
         errors.push(`Missing file: ${file}`);
       }
     }
@@ -158,7 +158,7 @@ export class TestRunner {
       const mem = JSON.parse(raw);
       if (!Array.isArray(mem.shortTerm)) errors.push('Memory: shortTerm is not an array');
       if (typeof mem.longTerm !== 'object') errors.push('Memory: longTerm is not an object');
-    } catch {
+    } catch (_e) {
       // Memory file may not exist on first run — that's OK
     }
     return { total: 1, passed: errors.length === 0 ? 1 : 0, errors };
@@ -172,7 +172,7 @@ export class TestRunner {
       const reg = JSON.parse(raw);
       if (!Array.isArray(reg.skills)) errors.push('Skills: skills is not an array');
       else if (reg.skills.length === 0) errors.push('Skills: registry is empty');
-    } catch {
+    } catch (_e) {
       errors.push('Skills: registry.json not found');
     }
     return { total: 1, passed: errors.length === 0 ? 1 : 0, errors };
@@ -186,7 +186,7 @@ export class TestRunner {
       const cfg = JSON.parse(raw);
       if (!cfg.theme) errors.push('Config: missing theme');
       if (!cfg.model) errors.push('Config: missing model');
-    } catch {
+    } catch (_e) {
       // Config file may not exist — will be created on first load
     }
     return { total: 1, passed: errors.length === 0 ? 1 : 0, errors };

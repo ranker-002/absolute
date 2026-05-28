@@ -135,7 +135,7 @@ export class SystemTools {
       const result = await this.exec(`node --check ${tempFile}`);
       await fs.unlink(tempFile).catch(() => {});
       return result.success;
-    } catch {
+    } catch (_e) {
       await fs.unlink(tempFile).catch(() => {});
       return false;
     }
@@ -148,7 +148,7 @@ export class SystemTools {
       const result = await this.exec(`npx tsc --noEmit --pretty false ${tempFile}`);
       await fs.unlink(tempFile).catch(() => {});
       return result.success;
-    } catch {
+    } catch (_e) {
       await fs.unlink(tempFile).catch(() => {});
       return false;
     }

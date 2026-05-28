@@ -305,9 +305,9 @@ export default {
         try {
           const raw = await fs.readFile(path.join(this.pluginsDir, entry, 'manifest.json'), 'utf-8');
           plugins.push(JSON.parse(raw) as PluginManifest);
-        } catch { /* skip */ }
+        } catch (_e) { /* skip */ }
       }
       return plugins;
-    } catch { return []; }
+    } catch (_e) { return []; }
   }
 }

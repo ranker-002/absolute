@@ -176,7 +176,7 @@ export class SkillActivator {
     try {
       const registry = JSON.parse(await sys.readFile('skills/registry.json')) as { skills: SkillDefinition[] };
       return registry.skills;
-    } catch {
+    } catch (_e) {
       return [];
     }
   }

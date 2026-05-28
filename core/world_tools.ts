@@ -45,7 +45,7 @@ export class FileOps {
 
   async exists(filePath: string): Promise<boolean> {
     const full = path.isAbsolute(filePath) ? filePath : path.join(ROOT, filePath);
-    try { await fs.access(full); return true; } catch { return false; }
+    try { await fs.access(full); return true; } catch (_e) { return false; }
   }
 
   async copy(src: string, dst: string): Promise<void> {
@@ -67,7 +67,7 @@ export class FileOps {
     try {
       const s = await fs.stat(full);
       return { size: s.size, modified: s.mtimeMs, isDir: s.isDirectory() };
-    } catch { return null; }
+    } catch (_e) { return null; }
   }
 
   async find(pattern: string, dir = '.'): Promise<string[]> {
@@ -86,7 +86,7 @@ export class FileOps {
           results.push(rel);
         }
       }
-    } catch { /* */ }
+    } catch (_e) { /* */ }
     return results;
   }
 }
@@ -116,11 +116,11 @@ export class ShellOps {
     try {
       await execAsync('which ' + cmd);
       return true;
-    } catch { return false; }
+    } catch (_e) { return false; }
   }
 
   async killPid(pid: number, signal = 'SIGTERM'): Promise<void> {
-    try { process.kill(pid, signal); } catch { /* */ }
+    try { process.kill(pid, signal); } catch (_e) { /* */ }
   }
 }
 
@@ -246,7 +246,7 @@ export class Database {
       const raw = await fs.readFile(this.dbPath, 'utf-8');
       const data = JSON.parse(raw) as Record<string, DBRecord[]>;
       for (const [k, v] of Object.entries(data)) this.collections.set(k, v);
-    } catch { /* first run */ }
+    } catch (_e) { /* first run */ }
   }
 
   private async save(): Promise<void> {

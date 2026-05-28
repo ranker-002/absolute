@@ -92,7 +92,7 @@ export class Marketplace {
 
     for (const skill of popular) {
       const filePath = path.join(MARKETPLACE_DIR, skill.name + '.json');
-      try { await fs.access(filePath); } catch {
+      try { await fs.access(filePath); } catch (_e) {
         await fs.writeFile(filePath, JSON.stringify(skill, null, 2), 'utf-8');
       }
     }
@@ -105,7 +105,7 @@ export class Marketplace {
       try {
         const raw = await fs.readFile(path.join(MARKETPLACE_DIR, file), 'utf-8');
         skills.push(JSON.parse(raw) as MarketplaceSkill);
-      } catch { /* skip */ }
+      } catch (_e) { /* skip */ }
     }
     return skills.sort((a, b) => b.downloads - a.downloads);
   }

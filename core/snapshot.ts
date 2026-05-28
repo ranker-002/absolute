@@ -59,7 +59,7 @@ export class SnapshotManager {
       try {
         await fs.copyFile(src, dst);
         copiedFiles.push(file);
-      } catch {
+      } catch (_e) {
         // File may not exist yet — skip
       }
     }
@@ -148,7 +148,7 @@ export class SnapshotManager {
       try {
         const metaRaw = await fs.readFile(path.join(SNAPSHOTS_DIR, entry, 'meta.json'), 'utf-8');
         snapshots.push(JSON.parse(metaRaw) as SnapshotMeta);
-      } catch {
+      } catch (_e) {
         snapshots.push({ timestamp: 0, reason: 'unknown', snapshotId: entry });
       }
     }

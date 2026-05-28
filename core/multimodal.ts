@@ -132,6 +132,6 @@ export class VoiceConversation {
         userPrompt: text.substring(0, 3000),
         maxTokens: 300
       });
-    } catch { return text.substring(0, 300); }
+    } catch (_e) { return text.substring(0, 300); }
   }
 }

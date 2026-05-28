@@ -82,7 +82,7 @@ export class SessionPersistence {
       try {
         const raw = await fs.readFile(path.join(SESSIONS_DIR, file), 'utf-8');
         sessions.push(JSON.parse(raw) as Session);
-      } catch {
+      } catch (_e) {
         // skip corrupted
       }
     }
@@ -94,7 +94,7 @@ export class SessionPersistence {
     try {
       const raw = await fs.readFile(path.join(SESSIONS_DIR, `${sessionId}.json`), 'utf-8');
       return JSON.parse(raw) as Session;
-    } catch {
+    } catch (_e) {
       return null;
     }
   }
@@ -113,7 +113,7 @@ export class SessionPersistence {
             results.push(entry);
           }
         }
-      } catch {
+      } catch (_e) {
         // skip
       }
     }
@@ -162,7 +162,7 @@ export class SessionPersistence {
         }
         logger.info('Session', `Cleaned up ${toDelete.length} old sessions`);
       }
-    } catch {
+    } catch (_e) {
       // ignore
     }
   }

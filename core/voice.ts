@@ -25,7 +25,7 @@ export class VoiceInterface {
       this.config.engine = 'whisper';
       this.config.enabled = true;
       logger.info('Voice', 'Whisper engine detected');
-    } catch {
+    } catch (_e) {
       logger.info('Voice', 'No local speech engine — using browser/recording mode');
     }
   }
@@ -61,7 +61,7 @@ export class VoiceInterface {
       const outFile = '/tmp/tts_' + Date.now() + '.wav';
       await execFileAsync('espeak', ['-w', outFile, text], { timeout: 10000 });
       return await fs.readFile(outFile);
-    } catch {
+    } catch (_e) {
       return null;
     }
   }

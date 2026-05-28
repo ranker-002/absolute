@@ -114,7 +114,7 @@ export class SkillComposer {
         capabilities: result.capabilities || [],
         composedAt: Date.now()
       };
-    } catch {
+    } catch (_e) {
       return {
         name: targetName,
         components: baseSkills.map(s => s.name),
@@ -139,7 +139,7 @@ export class StrategySelector {
 
     try {
       return JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
-    } catch {
+    } catch (_e) {
       return { strategy: 'direct', reasoning: 'Fallback: direct approach' };
     }
   }
@@ -153,7 +153,7 @@ export class StrategySelector {
 
     try {
       return JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
-    } catch {
+    } catch (_e) {
       return { newStrategy: 'iterate', changes: 'Try with different approach' };
     }
   }
@@ -187,7 +187,7 @@ export class FailureAnalyzer {
       const result = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
       rootCause = result.rootCause || rootCause;
       suggestedFix = result.suggestedFix || suggestedFix;
-    } catch { /* */ }
+    } catch (_e) { /* */ }
 
     const report: FailureReport = { taskId, task, error, attempts, rootCause, suggestedFix, timestamp: Date.now() };
     this.reports.push(report);

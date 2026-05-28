@@ -67,7 +67,7 @@ export class AgentRuntime {
       const data = JSON.parse(raw) as { tasks: Task[]; state: AgentState };
       for (const t of data.tasks) this.tasks.set(t.id, t);
       this.state = { ...this.state, ...data.state };
-    } catch { /* first run */ }
+    } catch (_e) { /* first run */ }
   }
 
   private async save(): Promise<void> {
@@ -90,7 +90,7 @@ export class AgentRuntime {
     let subtasks: Array<{ description: string; priority: TaskPriority }>;
     try {
       subtasks = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
-    } catch {
+    } catch (_e) {
       subtasks = [{ description: goal, priority: 'high' }];
     }
 
@@ -197,7 +197,7 @@ export class AgentRuntime {
           timestamp: Date.now()
         });
       }
-    } catch { /* reflection is best-effort */ }
+    } catch (_e) { /* reflection is best-effort */ }
   }
 
   getNextTask(): Task | null {

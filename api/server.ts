@@ -142,7 +142,7 @@ export class ApiServer {
         if (req.method === 'POST') {
           const chunks: Buffer[] = [];
           for await (const chunk of req) chunks.push(chunk);
-          try { body = JSON.parse(Buffer.concat(chunks).toString()); } catch { /* */ }
+          try { body = JSON.parse(Buffer.concat(chunks).toString()); } catch (_e) { /* */ }
         }
 
         // Route matching

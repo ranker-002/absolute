@@ -68,7 +68,7 @@ export class CrashRecovery {
         await this.saveHealth();
         return true;
       }
-    } catch {
+    } catch (_e) {
       // No marker — clean start
     }
     return false;
@@ -84,7 +84,7 @@ export class CrashRecovery {
   private async removeCrashMarker(): Promise<void> {
     try {
       await fs.rm(CRASH_MARKER, { force: true });
-    } catch {
+    } catch (_e) {
       // ignore
     }
   }
@@ -126,7 +126,7 @@ export class CrashRecovery {
       const raw = await fs.readFile(HEALTH_FILE, 'utf-8');
       const loaded = JSON.parse(raw) as Partial<HealthData>;
       this.healthData = { ...this.healthData, ...loaded };
-    } catch {
+    } catch (_e) {
       // First run
     }
   }
@@ -135,7 +135,7 @@ export class CrashRecovery {
     try {
       await fs.mkdir(path.dirname(HEALTH_FILE), { recursive: true });
       await fs.writeFile(HEALTH_FILE, JSON.stringify(this.healthData, null, 2), 'utf-8');
-    } catch {
+    } catch (_e) {
       // ignore
     }
   }

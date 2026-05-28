@@ -38,7 +38,7 @@ export class ConfigManager {
       const raw = await fs.readFile(this.configPath, 'utf-8');
       const loaded = JSON.parse(raw) as Partial<UltimateConfig>;
       this.config = { ...DEFAULT_CONFIG, ...loaded };
-    } catch {
+    } catch (_e) {
       await this.save();
     }
     return this.config;

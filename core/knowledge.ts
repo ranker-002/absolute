@@ -83,7 +83,7 @@ Self-transformation: snapshot → LLM codegen → validate → write → relaunc
       const entry = JSON.parse(raw) as KnowledgeEntry;
       Object.assign(entry, updates, { updatedAt: Date.now() });
       await fs.writeFile(filePath, JSON.stringify(entry, null, 2), 'utf-8');
-    } catch {
+    } catch (_e) {
       logger.error('Knowledge', `Entry not found: ${id}`);
     }
   }
@@ -92,7 +92,7 @@ Self-transformation: snapshot → LLM codegen → validate → write → relaunc
     try {
       const raw = await fs.readFile(path.join(KNOWLEDGE_DIR, `${id}.json`), 'utf-8');
       return JSON.parse(raw) as KnowledgeEntry;
-    } catch {
+    } catch (_e) {
       return null;
     }
   }
@@ -116,7 +116,7 @@ Self-transformation: snapshot → LLM codegen → validate → write → relaunc
         }
 
         if (score > 0) results.push({ entry, score });
-      } catch {
+      } catch (_e) {
         // skip
       }
     }
@@ -132,7 +132,7 @@ Self-transformation: snapshot → LLM codegen → validate → write → relaunc
       try {
         const raw = await fs.readFile(path.join(KNOWLEDGE_DIR, file), 'utf-8');
         entries.push(JSON.parse(raw) as KnowledgeEntry);
-      } catch {
+      } catch (_e) {
         // skip
       }
     }
@@ -144,7 +144,7 @@ Self-transformation: snapshot → LLM codegen → validate → write → relaunc
     try {
       await fs.rm(path.join(KNOWLEDGE_DIR, `${id}.json`), { force: true });
       return true;
-    } catch {
+    } catch (_e) {
       return false;
     }
   }

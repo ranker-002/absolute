@@ -192,59 +192,13 @@ OPENROUTER_API_KEY=${answer}
         console.log('');
         return;
       }
-    } catch { /* prompt failed */ }
+    } catch (_e) { /* prompt failed */ }
 
     // Fallback — can't prompt
     console.log('\x1b[33m  ⚠ No key provided. Set it later:\x1b[0m');
     console.log('\x1b[33m  nano ~/.ultimate/.env\x1b[0m');
     console.log('');
     process.exit(1);
-  }
-
-    // Interactive mode — prompt for key
-    console.log('');
-    console.log('\x1b[35m╔══════════════════════════════════════════════════╗\x1b[0m');
-    console.log('\x1b[35m║  Welcome to ABSOLUTE — Living Intelligence      ║\x1b[0m');
-    console.log('\x1b[35m╚══════════════════════════════════════════════════╝\x1b[0m');
-    console.log('');
-    console.log('\x1b[33m  Get your FREE API key at:\x1b[0m');
-    console.log('\x1b[36m  https://openrouter.ai/keys\x1b[0m');
-    console.log('');
-
-    const readline = await import('node:readline');
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-
-    const answer = await new Promise<string>((resolve) => {
-      rl.question('\x1b[36m  Paste your OpenRouter API key (or press Enter to skip): \x1b[0m', (ans) => {
-        rl.close();
-        resolve(ans.trim());
-      });
-    });
-
-    if (answer) {
-      // Write to .env
-      const envPath = path.join(ROOT, '.env');
-      const envContent = `# ABSOLUTE — Living Intelligence Entity
-# API Key configured on first launch
-
-OPENROUTER_API_KEY=${answer}
-
-# Model (default: deepseek/deepseek-v4-flash:free)
-# ULTIMATE_MODEL=deepseek/deepseek-v4-flash:free
-
-# Force plain console mode
-# ULTIMATE_PLAIN=1
-`;
-      await fs.writeFile(envPath, envContent, 'utf-8');
-      process.env.OPENROUTER_API_KEY = answer;
-      console.log('');
-      console.log('\x1b[32m  ✓ API key saved. Starting ABSOLUTE...\x1b[0m');
-      console.log('');
-    } else {
-      console.log('');
-      console.log('\x1b[33m  ⚠ Skipped. Configure later: nano .env\x1b[0m');
-      console.log('');
-    }
   }
 
   private startApiServer(): void {
@@ -329,14 +283,14 @@ OPENROUTER_API_KEY=${answer}
         rateLimitRemaining: rl.isLimited ? Math.ceil(rateLimiter.getRemainingMs() / 1000) + 's' : '',
         recentErrors: logger.getRecentErrors().length
       });
-    } catch { /* ignore */ }
+    } catch (_e) { /* ignore */ }
   }
 
   private async refreshSnapshotCount(): Promise<void> {
     try {
       const count = await this.snapshots.countSnapshots();
       this.ui?.updateDashboardData({ snapshotCount: count });
-    } catch { /* */ }
+    } catch (_e) { /* */ }
   }
 
   private startTui(): void {
