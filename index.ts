@@ -152,21 +152,30 @@ class Ultimate {
     if (hasKey) return;
 
     console.log('');
-    console.log('\x1b[35m╔══════════════════════════════════════════════════╗\x1b[0m');
-    console.log('\x1b[35m║  Welcome to ABSOLUTE — Living Intelligence      ║\x1b[0m');
-    console.log('\x1b[35m╚══════════════════════════════════════════════════╝\x1b[0m');
+    console.log('\x1b[35m╔════════════════════════════════════════════════════════════╗\x1b[0m');
+    console.log('\x1b[35m║                                                            ║\x1b[0m');
+    console.log('\x1b[35m║  \x1b[1m⚡ ABSOLUTE — Living Intelligence\x1b[0m\x1b[35m                       ║\x1b[0m');
+    console.log('\x1b[35m║  \x1b[2mSelf-evolving AI entity with auto-recovery\x1b[0m\x1b[35m              ║\x1b[0m');
+    console.log('\x1b[35m║                                                            ║\x1b[0m');
+    console.log('\x1b[35m╚════════════════════════════════════════════════════════════╝\x1b[0m');
     console.log('');
-    console.log('\x1b[33m  Get your FREE API key at:\x1b[0m');
-    console.log('\x1b[36m  https://openrouter.ai/keys\x1b[0m');
+    console.log('\x1b[2m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m');
+    console.log('');
+    console.log('\x1b[33m  \x1b[1mSetup required:\x1b[0m');
+    console.log('');
+    console.log('\x1b[36m  1.\x1b[0m Go to \x1b[4mhttps://openrouter.ai/keys\x1b[0m');
+    console.log('\x1b[36m  2.\x1b[0m Create a free account (no credit card)');
+    console.log('\x1b[36m  3.\x1b[0m Copy your API key below');
+    console.log('');
+    console.log('\x1b[2m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m');
     console.log('');
 
-    // Try interactive prompt
     try {
       const readline = await import('node:readline');
       const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
       const answer = await new Promise<string>((resolve) => {
-        rl.question('\x1b[36m  Paste your OpenRouter API key (or press Enter to skip): \x1b[0m', (ans) => {
+        rl.question('\x1b[36m  🔑 Paste your API key:\x1b[0m \x1b[2m(or press Enter to skip)\x1b[0m\n  \x1b[36m❯\x1b[0m ', (ans) => {
           rl.close();
           resolve(ans.trim());
         });
@@ -188,15 +197,15 @@ OPENROUTER_API_KEY=${answer}
         await fs.writeFile(envPath, envContent, 'utf-8');
         process.env.OPENROUTER_API_KEY = answer;
         console.log('');
-        console.log('\x1b[32m  ✓ API key saved. Starting ABSOLUTE...\x1b[0m');
+        console.log('\x1b[32m  ✓ Key saved! Starting ABSOLUTE...\x1b[0m');
         console.log('');
         return;
       }
     } catch (_e) { /* prompt failed */ }
 
-    // Fallback — can't prompt
+    console.log('');
     console.log('\x1b[33m  ⚠ No key provided. Set it later:\x1b[0m');
-    console.log('\x1b[33m  nano ~/.ultimate/.env\x1b[0m');
+    console.log('\x1b[2m    nano ~/.ultimate/.env\x1b[0m');
     console.log('');
     process.exit(1);
   }
