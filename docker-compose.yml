@@ -1,0 +1,20 @@
+services:
+  ultimate:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - ULTIMATE_MODEL=${ULTIMATE_MODEL:-deepseek/deepseek-v4-flash:free}
+      - ULTIMATE_API=1
+      - ULTIMATE_PLAIN=1
+    volumes:
+      - ultimate-data:/app/memory
+      - ultimate-snapshots:/app/snapshots
+      - ultimate-plugins:/app/plugins
+    restart: unless-stopped
+
+volumes:
+  ultimate-data:
+  ultimate-snapshots:
+  ultimate-plugins:

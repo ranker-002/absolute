@@ -1,13 +1,21 @@
 {
   "name": "ultimate",
-  "version": "1.0.0",
-  "description": "Entité IA vivante et auto-évolutive",
+  "version": "2.0.0",
+  "description": "Living Intelligence Entity — self-evolving AI with auto-recovery",
   "type": "module",
   "main": "index.ts",
+  "bin": {
+    "ultimate": "./bin/ultimate.js"
+  },
   "scripts": {
     "start": "tsx index.ts",
     "dev": "tsx watch index.ts",
-    "typecheck": "tsc --noEmit"
+    "api": "ULTIMATE_API=1 tsx index.ts",
+    "dashboard": "ULTIMATE_DASHBOARD=1 tsx index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx tests/basic.test.ts",
+    "docker:build": "docker build -t ultimate .",
+    "docker:run": "docker run --env-file .env -p 3000:3000 ultimate"
   },
   "dependencies": {
     "blessed": "^0.1.81",
@@ -19,5 +27,7 @@
     "@types/node": "^24.10.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
-  }
+  },
+  "keywords": ["ai", "self-evolving", "tui", "llm", "openrouter"],
+  "license": "MIT"
 }

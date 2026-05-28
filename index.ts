@@ -25,6 +25,15 @@ import { KnowledgeBase } from './core/knowledge.js';
 import { TemplateManager } from './core/templates.js';
 import { ResponseCache } from './core/response_cache.js';
 import { MultiModelManager } from './core/multi_model.js';
+import { ApiServer } from './api/server.js';
+import { Marketplace } from './core/marketplace.js';
+import { Integrations } from './core/integrations.js';
+import { Sandbox } from './core/sandbox.js';
+import { EmbeddingsMemory } from './core/embeddings.js';
+import { MultiUserManager } from './core/multi_user.js';
+import { AutoSkillGenerator } from './core/auto_skills.js';
+import { VoiceInterface } from './core/voice.js';
+import { WebDashboard } from './web/dashboard.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -46,6 +55,15 @@ class Ultimate {
   private templateManager = new TemplateManager();
   private responseCache = new ResponseCache();
   private multiModelManager = new MultiModelManager();
+  private apiServer = new ApiServer(parseInt(process.env.ULTIMATE_API_PORT || '3000'));
+  private marketplace = new Marketplace();
+  private integrations = new Integrations();
+  private sandbox = new Sandbox();
+  private embeddings = new EmbeddingsMemory();
+  private multiUser = new MultiUserManager();
+  private autoSkills = new AutoSkillGenerator();
+  private voice = new VoiceInterface();
+  private dashboard = new WebDashboard(parseInt(process.env.ULTIMATE_DASHBOARD_PORT || '3001'));
   private dna!: DNA;
   private ui: TerminalUI | null = null;
   private busy = false;
@@ -65,6 +83,20 @@ class Ultimate {
     await this.templateManager.init();
     this.multiModelManager.init();
     this.responseCache.clear();
+    await this.marketplace.init();
+    await this.integrations.init();
+    await this.multiUser.init();
+    await this.voice.init();
+
+    // Start API server if enabled
+    if (process.env.ULTIMATE_API === '1') {
+      this.startApiServer();
+    }
+
+    // Start web dashboard if enabled
+    if (process.env.ULTIMATE_DASHBOARD === '1') {
+      this.startDashboard();
+    }
 
     const health = this.crashRecovery.getHealth();
     if (health.crashCount > 0) {
@@ -82,6 +114,41 @@ class Ultimate {
     const hasKey = Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY);
     if (!hasKey) return 'API key missing: set OPENROUTER_API_KEY (.env supported). Get yours at https://openrouter.ai/keys';
     return null;
+  }
+
+  private startApiServer(): void {
+    this.apiServer.init({
+      health: () => ({ version: '2.0.0', uptime: Date.now(), form: this.dna.currentForm }),
+      chat: async (message: string, userId?: string) => {
+        if (userId) await this.multiUser.switchUser(userId);
+        const result = await this.processInput(message);
+        return result || '(streaming response)';
+      },
+      status: () => this.renderStatus().reduce((obj, line) => {
+        const [k, ...v] = line.replace(/\{[^}]+\}/g, '').split(': ');
+        if (k) obj[k.trim()] = v.join(': ');
+        return obj;
+      }, {} as Record<string, string>),
+      snapshots: async () => await this.snapshots.listSnapshots(),
+      skills: async () => await this.skills.loadAllFromRegistry(),
+      memory: async (query?: string) => query ? await this.memory.recall(query) : this.memory.getStats(),
+      evolution: () => this.evolutionMemory.getStats() as unknown as Record<string, unknown>,
+      config: () => config.getAll() as unknown as Record<string, unknown>
+    });
+    this.apiServer.start().catch(err => logger.error('Boot', 'API failed: ' + err.message));
+  }
+
+  private startDashboard(): void {
+    this.dashboard.start(async () => ({
+      mutations: this.dna.mutations,
+      interactions: this.dna.data.memory.interaction_count,
+      skills: this.dna.activeSkills.length,
+      memory: this.memory.getStats().shortTerm,
+      snapshots: await this.snapshots.countSnapshots(),
+      form: this.dna.currentForm,
+      model: this.llm.getModel(),
+      uptime: Date.now()
+    })).catch(err => logger.error('Boot', 'Dashboard failed: ' + err.message));
   }
 
   private renderStatus(): string[] {
@@ -180,6 +247,15 @@ class Ultimate {
         if (input === '/sessions') { await this.showSessions(); return; }
         if (input === '/cache') { this.showCache(); return; }
         if (input === '/autorecover') { await this.autoRecover(); return; }
+        if (input === '/marketplace') { await this.showMarketplace(); return; }
+        if (input.startsWith('/install ')) { await this.installMarketplace(input.slice(9).trim()); return; }
+        if (input === '/users') { this.showUsers(); return; }
+        if (input.startsWith('/user ')) { await this.switchUser(input.slice(6).trim()); return; }
+        if (input === '/voice') { this.showVoice(); return; }
+        if (input === '/sandbox') { this.showSandboxHelp(); return; }
+        if (input.startsWith('/run ')) { await this.runInSandbox(input.slice(5).trim()); return; }
+        if (input === '/patterns') { this.showPatterns(); return; }
+        if (input === '/integrations') { this.showIntegrations(); return; }
         await this.handleInput(input);
       },
       () => process.exit(0)
@@ -228,6 +304,17 @@ class Ultimate {
       '  /tests            Run test suite',
       '  /health           Show system health',
       '  /autorecover      Auto-recover from crash',
+      '═══ Marketplace ═══',
+      '  /marketplace      Browse installable skills',
+      '  /install <name>   Install skill from marketplace',
+      '  /patterns         Show usage patterns',
+      '═══ Multi-User ═══',
+      '  /users            List users',
+      '  /user <id>        Switch user',
+      '═══ Voice & Sandbox ═══',
+      '  /voice            Voice status',
+      '  /sandbox          Sandbox help',
+      '  /run <code>       Run code in sandbox',
       '═══ Skills & Knowledge ═══',
       '  /skills           List all skills',
       '  /deactivate <s>   Deactivate a skill',
@@ -473,6 +560,101 @@ class Ultimate {
     else this.ui?.appendWarning('No recovery needed or no snapshots available');
   }
 
+  private async showMarketplace(): Promise<void> {
+    const skills = await this.marketplace.list();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Skill Marketplace{/bold}');
+    for (const s of skills.slice(0, 15)) {
+      const rating = '★'.repeat(Math.round(s.rating));
+      this.ui?.appendInfo('  {bold}' + s.name + '{/bold} v' + s.version + ' — ' + s.description);
+      this.ui?.appendInfo('    ' + rating + ' (' + s.rating.toFixed(1) + ') · ' + s.downloads + ' downloads · by ' + s.author);
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async installMarketplace(name: string): Promise<void> {
+    this.ui?.appendSystem('Installing ' + name + '...');
+    const ok = await this.marketplace.install(name);
+    if (ok) this.ui?.appendSuccess('Installed: ' + name);
+    else this.ui?.appendWarning('Skill not found: ' + name);
+  }
+
+  private showUsers(): void {
+    const users = this.multiUser.getUsers();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Users{/bold}');
+    for (const u of users) {
+      const current = this.multiUser.getCurrentUser()?.id === u.id ? ' (current)' : '';
+      this.ui?.appendInfo('  ' + u.id + ' — ' + u.name + ' [' + u.role + ']' + current + ' — ' + u.interactionCount + ' interactions');
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async switchUser(userId: string): Promise<void> {
+    const user = await this.multiUser.switchUser(userId);
+    if (user) this.ui?.appendSuccess('Switched to: ' + user.name);
+    else this.ui?.appendWarning('User not found: ' + userId);
+  }
+
+  private showVoice(): void {
+    const v = this.voice.getConfig();
+    this.ui?.appendInfo('Voice: ' + (v.enabled ? 'enabled' : 'disabled') + ' — engine: ' + v.engine + ' — language: ' + v.language);
+  }
+
+  private showSandboxHelp(): void {
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Sandbox Execution{/bold}');
+    this.ui?.appendInfo('  /run <code> — Execute code safely in sandbox');
+    this.ui?.appendInfo('  Supported: TypeScript, JavaScript, Python, Shell');
+    this.ui?.appendInfo('  Timeout: 10s | Max output: 50KB');
+    this.ui?.appendDivider();
+  }
+
+  private async runInSandbox(code: string): Promise<void> {
+    this.ui?.appendSystem('Running in sandbox...');
+    const lang = code.includes('import ') || code.includes(': ') ? 'typescript'
+      : code.includes('def ') || code.includes('import ') ? 'python'
+      : code.includes('#!/') ? 'shell' : 'javascript';
+    const result = await this.sandbox.executeCode(code, lang);
+    if (result.success) {
+      this.ui?.appendSuccess('Exit 0 (' + result.duration + 'ms)');
+      if (result.stdout) this.ui?.appendInfo(result.stdout);
+    } else {
+      this.ui?.appendError('Exit ' + result.exitCode + ' (' + result.duration + 'ms)');
+      if (result.stderr) this.ui?.appendError(result.stderr);
+      if (result.timedOut) this.ui?.appendWarning('Timed out');
+    }
+  }
+
+  private showPatterns(): void {
+    const patterns = this.autoSkills.getPatterns();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Usage Patterns{/bold}');
+    if (patterns.length === 0) {
+      this.ui?.appendInfo('  No patterns detected yet — keep chatting!');
+    } else {
+      for (const p of patterns.slice(0, 10)) {
+        this.ui?.appendInfo('  "' + p.trigger + '" → ' + p.suggestedSkill + ' (freq: ' + p.frequency + ')');
+      }
+    }
+    this.ui?.appendDivider();
+  }
+
+  private showIntegrations(): void {
+    const active = this.integrations.getActive();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Integrations{/bold}');
+    if (active.length === 0) {
+      this.ui?.appendInfo('  No integrations configured');
+      this.ui?.appendInfo('  Set env vars: GITHUB_TOKEN, DISCORD_BOT_TOKEN, SLACK_BOT_TOKEN, etc.');
+    } else {
+      for (const i of active) {
+        this.ui?.appendSuccess('  ✓ ' + i.type + ' (' + i.name + ')');
+      }
+    }
+    this.ui?.appendDivider();
+  }
+
   private async handleInput(userMessage: string): Promise<void> {
     if (this.busy) { this.ui?.appendError('Request in progress...'); return; }
     this.busy = true;
@@ -558,6 +740,23 @@ class Ultimate {
       this.evolution
         .analyze({ input: userMessage, output: response, skills: intent.requiredSkills })
         .catch(() => {});
+
+      // Auto-skill generation
+      this.autoSkills.analyzeAndGenerate({ input: userMessage, output: response }).catch(() => {});
+
+      // Embeddings
+      this.embeddings.add(userMessage).catch(() => {});
+
+      // Multi-user tracking
+      this.multiUser.recordInteraction().catch(() => {});
+
+      // Integrations
+      this.integrations.notify({
+        type: 'interaction',
+        source: 'tui',
+        data: { input: userMessage, output: response.substring(0, 200) },
+        timestamp: Date.now()
+      }).catch(() => {});
 
       return response;
     }
