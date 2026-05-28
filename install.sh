@@ -82,7 +82,7 @@ setup_bin() {
 
     # Write bin script with resolved install dir
     echo '#!/bin/bash' > "$BIN_DIR/absolute"
-    echo "exec npx tsx \"$INSTALL_DIR/index.ts\" \"\$@\"" >> "$BIN_DIR/absolute"
+    echo "exec npx --prefix \"$INSTALL_DIR\" tsx \"$INSTALL_DIR/index.ts\" \"\$@\"" >> "$BIN_DIR/absolute"
     chmod +x "$BIN_DIR/absolute"
 
     # Add to PATH if not already
