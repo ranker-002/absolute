@@ -1,0 +1,17 @@
+{
+  "name": "ultimate",
+  "version": "1.0.0",
+  "description": "Entité IA vivante et auto-évolutive",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "ultimate": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1"
+  }
+}

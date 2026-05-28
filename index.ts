@@ -1,0 +1,669 @@
+import readline from 'node:readline';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { bootstrap } from './core/bootstrap.js';
+import { DNA } from './core/dna.js';
+import { IntentEngine } from './core/intent_engine.js';
+import { Transformer } from './core/transformer.js';
+import { UniversalMemory } from './memory/store.js';
+import { SkillActivator } from './core/skill_activator.js';
+import { EvolutionLoop } from './core/evolution_loop.js';
+import { LLMEngine } from './core/llm_engine.js';
+import { SnapshotManager } from './core/snapshot.js';
+import { TerminalUI } from './ui/terminal_ui.js';
+import { logger } from './core/logger.js';
+import { config } from './core/config.js';
+import { rateLimiter } from './core/rate_limiter.js';
+import { pluginManager } from './core/plugin_manager.js';
+import { CrashRecovery } from './core/crash_recovery.js';
+import { SessionPersistence } from './core/session.js';
+import { TestRunner } from './core/test_runner.js';
+import { EvolutionMemory } from './core/evolution_memory.js';
+import { GitIntegration } from './core/git_integration.js';
+import { KnowledgeBase } from './core/knowledge.js';
+import { TemplateManager } from './core/templates.js';
+import { ResponseCache } from './core/response_cache.js';
+import { MultiModelManager } from './core/multi_model.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.join(__dirname, '..');
+
+class Ultimate {
+  private intent = new IntentEngine();
+  private transformer = new Transformer();
+  private memory = new UniversalMemory();
+  private skills = new SkillActivator();
+  private evolution = new EvolutionLoop();
+  private llm = new LLMEngine();
+  private snapshots = new SnapshotManager();
+  private crashRecovery = new CrashRecovery();
+  private sessionPersistence = new SessionPersistence();
+  private testRunner = new TestRunner();
+  private evolutionMemory = new EvolutionMemory();
+  private gitIntegration = new GitIntegration();
+  private knowledgeBase = new KnowledgeBase();
+  private templateManager = new TemplateManager();
+  private responseCache = new ResponseCache();
+  private multiModelManager = new MultiModelManager();
+  private dna!: DNA;
+  private ui: TerminalUI | null = null;
+  private busy = false;
+
+  async boot(): Promise<void> {
+    await bootstrap();
+    await config.load();
+    logger.setLevel(config.get('logLevel'));
+
+    this.dna = await DNA.load();
+    await this.memory.restore();
+    await pluginManager.init();
+    await this.transformer.init();
+    await this.crashRecovery.init();
+    await this.sessionPersistence.init();
+    await this.knowledgeBase.init();
+    await this.templateManager.init();
+    this.multiModelManager.init();
+    this.responseCache.clear();
+
+    const health = this.crashRecovery.getHealth();
+    if (health.crashCount > 0) {
+      logger.warn('Boot', 'Previous crash detected — auto-rollback available');
+    }
+
+    if (process.stdout.isTTY && !process.env.ULTIMATE_PLAIN) {
+      this.startTui();
+    } else {
+      this.startPlainLoop();
+    }
+  }
+
+  private preflightWarning(): string | null {
+    const hasKey = Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY);
+    if (!hasKey) return 'API key missing: set OPENROUTER_API_KEY (.env supported). Get yours at https://openrouter.ai/keys';
+    return null;
+  }
+
+  private renderStatus(): string[] {
+    const rl = rateLimiter.getState();
+    const remaining = rateLimiter.getRemainingMs();
+    const modeText = this.busy
+      ? '{yellow-fg}processing{/yellow-fg}'
+      : rl.isLimited
+        ? '{red-fg}rate limited ' + Math.ceil(remaining / 1000) + 's{/red-fg}'
+        : '{green-fg}idle{/green-fg}';
+
+    return [
+      '{bold}ULTIMATE{/bold}',
+      'Version: ' + this.dna.data.identity.version,
+      'Form: ' + this.dna.currentForm,
+      'Model: ' + this.llm.getModel().split('/').pop(),
+      'Mutations: ' + this.dna.mutations,
+      'Skills: ' + (this.dna.activeSkills.length ? this.dna.activeSkills.join(', ') : 'base state'),
+      'Mode: ' + modeText
+    ];
+  }
+
+  private async refreshDashboardData(): Promise<void> {
+    try {
+      const snapCount = await this.snapshots.countSnapshots();
+      const memStats = this.memory.getStats();
+      const rl = rateLimiter.getState();
+      this.ui?.updateDashboardData({
+        version: this.dna.data.identity.version,
+        form: this.dna.currentForm,
+        mutations: this.dna.mutations,
+        skills: this.dna.activeSkills,
+        interactionCount: this.dna.data.memory.interaction_count,
+        memoryCount: memStats.shortTerm,
+        memoryUsage: memStats.totalSize,
+        snapshotCount: snapCount,
+        currentModel: this.llm.getModel(),
+        rateLimited: rl.isLimited,
+        rateLimitRemaining: rl.isLimited ? Math.ceil(rateLimiter.getRemainingMs() / 1000) + 's' : '',
+        recentErrors: logger.getRecentErrors().length
+      });
+    } catch { /* ignore */ }
+  }
+
+  private async refreshSnapshotCount(): Promise<void> {
+    try {
+      const count = await this.snapshots.countSnapshots();
+      this.ui?.updateDashboardData({ snapshotCount: count });
+    } catch { /* */ }
+  }
+
+  private startTui(): void {
+    this.ui = new TerminalUI(
+      async (input: string) => {
+        if (input === '/exit' || input === '/quit') {
+          await this.sessionPersistence.endSession();
+          await pluginManager.shutdown();
+          await this.crashRecovery.shutdown();
+          process.exit(0);
+        }
+        if (input === '/status') { this.ui?.setStatus(this.renderStatus()); return; }
+        if (input === '/clear') { this.ui?.clearConversation(); return; }
+        if (input === '/theme') {
+          this.ui?.cycleTheme();
+          const theme = this.ui?.getCurrentTheme().name.toLowerCase() || 'default';
+          await config.set('theme', theme);
+          return;
+        }
+        if (input === '/help') { this.showHelp(); return; }
+        if (input === '/memory') { await this.showMemory(); return; }
+        if (input.startsWith('/recall ')) { await this.recallMemory(input.slice(8).trim()); return; }
+        if (input === '/snapshots') { await this.showSnapshots(); return; }
+        if (input === '/snapshot') { await this.createSnapshot('manual'); return; }
+        if (input === '/skills') { await this.showSkills(); return; }
+        if (input.startsWith('/deactivate ')) { this.deactivateSkill(input.slice(12).trim()); return; }
+        if (input.startsWith('/model ')) { this.switchModel(input.slice(7).trim()); return; }
+        if (input === '/model') { this.ui?.appendInfo('Current model: ' + this.llm.getModel()); return; }
+        if (input === '/config') { this.ui?.showConfig(config.getAll() as unknown as Record<string, unknown>); return; }
+        if (input.startsWith('/config ')) { await this.updateConfig(input.slice(8).trim()); return; }
+        if (input === '/export') { await this.exportConversation(); return; }
+        if (input.startsWith('/import ')) { await this.importConversation(input.slice(8).trim()); return; }
+        if (input === '/log') { this.showLog(); return; }
+        if (input === '/errors') { this.showErrors(); return; }
+        if (input === '/plugin') { this.ui?.showPluginList(pluginManager.getPlugins()); return; }
+        if (input.startsWith('/rollback ')) { await this.rollbackSnapshot(input.slice(10).trim()); return; }
+        if (input === '/rollback') { await this.rollbackSnapshot(); return; }
+        if (input.startsWith('/diff ')) { await this.previewDiff(input.slice(6).trim()); return; }
+        if (input === '/tests') { await this.runTests(); return; }
+        if (input === '/health') { this.showHealth(); return; }
+        if (input === '/evolution') { this.showEvolution(); return; }
+        if (input === '/git') { await this.showGitLog(); return; }
+        if (input.startsWith('/knowledge ')) { await this.searchKnowledge(input.slice(11).trim()); return; }
+        if (input === '/knowledge') { await this.showKnowledge(); return; }
+        if (input.startsWith('/template ')) { await this.showTemplate(input.slice(10).trim()); return; }
+        if (input === '/templates') { this.showTemplates(); return; }
+        if (input === '/sessions') { await this.showSessions(); return; }
+        if (input === '/cache') { this.showCache(); return; }
+        if (input === '/autorecover') { await this.autoRecover(); return; }
+        await this.handleInput(input);
+      },
+      () => process.exit(0)
+    );
+
+    const warning = this.preflightWarning();
+    if (warning) this.ui.appendError(warning);
+
+    const savedTheme = config.get('theme');
+    if (savedTheme && savedTheme !== 'default') this.ui.setTheme(savedTheme);
+
+    this.sessionPersistence.startSession(this.dna.currentForm, this.llm.getModel());
+    this.refreshDashboardData();
+    this.ui.setStatus(this.renderStatus());
+
+    this.ui.appendSystem('╔══════════════════════════════════════════════════════════╗');
+    this.ui.appendSystem('║         ULTIMATE — Living Intelligence Entity          ║');
+    this.ui.appendSystem('║       Self-evolving AI with auto-recovery              ║');
+    this.ui.appendSystem('╚══════════════════════════════════════════════════════════╝');
+    this.ui.appendSystem('');
+    this.ui.appendSystem('Type /help for available commands.');
+    this.ui.appendSystem('Type a message to interact with ULTIMATE.');
+    this.refreshSnapshotCount();
+  }
+
+  private showHelp(): void {
+    const lines = [
+      '═══ Core ═══',
+      '  /status           Show system status',
+      '  /clear            Clear conversation',
+      '  /theme            Cycle themes (10 available)',
+      '  /help             Show this help',
+      '  /exit             Exit application',
+      '═══ Memory & History ═══',
+      '  /memory           Show memory statistics',
+      '  /recall <query>   Search memory',
+      '  /export           Export conversation',
+      '  /import <file>    Import conversation',
+      '  /sessions         List past sessions',
+      '═══ Evolution ═══',
+      '  /snapshots        List all snapshots',
+      '  /snapshot         Create manual snapshot',
+      '  /rollback [id]    Rollback to snapshot',
+      '  /diff <id>        Preview rollback changes',
+      '  /evolution        Show transformation history',
+      '  /tests            Run test suite',
+      '  /health           Show system health',
+      '  /autorecover      Auto-recover from crash',
+      '═══ Skills & Knowledge ═══',
+      '  /skills           List all skills',
+      '  /deactivate <s>   Deactivate a skill',
+      '  /knowledge [q]    Search knowledge base',
+      '  /templates        List transformation templates',
+      '  /template <name>  Show template details',
+      '═══ System ═══',
+      '  /model [name]     Show/set model',
+      '  /config           Show config',
+      '  /config k=v       Update config',
+      '  /log              Show all logs',
+      '  /errors           Show recent errors',
+      '  /git              Show git log',
+      '  /plugin           List plugins',
+      '  /cache            Show cache stats',
+      '═══ Shortcuts ═══',
+      '  Ctrl+T Theme | Ctrl+H History | Ctrl+L Clear',
+      '  Ctrl+S Bottom | Tab Focus/AutoComplete | Ctrl+C Exit'
+    ];
+    for (const line of lines) this.ui?.appendSystem(line);
+  }
+
+  private async showMemory(): Promise<void> {
+    const stats = this.memory.getStats();
+    this.ui?.showMemoryStats(stats);
+    this.ui?.setStatus(this.renderStatus());
+  }
+
+  private async recallMemory(query: string): Promise<void> {
+    const results = await this.memory.recall(query);
+    if (!results.length) { this.ui?.appendInfo('No matches for "' + query + '".'); return; }
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('Memory: "' + query + '" — ' + results.length + ' results');
+    for (const entry of results.slice(-5)) {
+      const date = new Date(entry.timestamp).toLocaleString('fr-FR');
+      const val = typeof entry.value === 'object' ? JSON.stringify(entry.value).substring(0, 120) : String(entry.value).substring(0, 120);
+      this.ui?.appendInfo('[' + date + '] {bold}' + entry.key + '{/bold}: ' + val);
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async showSnapshots(): Promise<void> {
+    const snapshots = await this.snapshots.listSnapshots();
+    this.ui?.showSnapshotList(snapshots);
+    this.ui?.setStatus(this.renderStatus());
+  }
+
+  private async createSnapshot(reason: string): Promise<void> {
+    this.ui?.appendSystem('Creating snapshot...');
+    try {
+      const id = await this.snapshots.createSnapshot(reason);
+      this.ui?.appendSuccess('Snapshot: ' + id);
+      await this.refreshSnapshotCount();
+    } catch (e) { this.ui?.appendError('Failed: ' + (e as Error).message); }
+  }
+
+  private async rollbackSnapshot(snapshotId?: string): Promise<void> {
+    const targetId = snapshotId || (await this.snapshots.getLatestSnapshotId());
+    if (!targetId) { this.ui?.appendWarning('No snapshots.'); return; }
+    this.ui?.showDiffPreview(await this.snapshots.previewRollback(targetId));
+    this.ui?.appendSystem('Rolling back to ' + targetId + '...');
+    try {
+      await this.snapshots.rollback(targetId);
+      this.ui?.appendSuccess('Rolled back: ' + targetId);
+      await this.gitIntegration.commitRollback(targetId);
+    } catch (e) { this.ui?.appendError('Failed: ' + (e as Error).message); }
+  }
+
+  private async previewDiff(snapshotId: string): Promise<void> {
+    try { this.ui?.showDiffPreview(await this.snapshots.previewRollback(snapshotId)); }
+    catch (e) { this.ui?.appendError((e as Error).message); }
+  }
+
+  private async showSkills(): Promise<void> {
+    const skills = await this.skills.loadAllFromRegistry();
+    this.ui?.showSkillList(skills);
+    this.ui?.setStatus(this.renderStatus());
+  }
+
+  private deactivateSkill(name: string): void {
+    if (this.skills.deactivate(name)) this.ui?.appendSuccess('Deactivated: ' + name);
+    else this.ui?.appendWarning('Not active or has dependents: ' + name);
+    this.ui?.setStatus(this.renderStatus());
+  }
+
+  private switchModel(model: string): void {
+    this.llm.setModel(model);
+    this.ui?.appendSuccess('Model: ' + model);
+    this.ui?.updateDashboardData({ currentModel: model });
+    config.set('model', model);
+  }
+
+  private async updateConfig(setting: string): Promise<void> {
+    const parts = setting.split('=');
+    const key = parts[0];
+    const value = parts.slice(1).join('=');
+    if (!key || !value) { this.ui?.appendWarning('Usage: /config key=value'); return; }
+    const numVal = Number(value);
+    const boolVal = value === 'true' ? true : value === 'false' ? false : undefined;
+    await config.update({ [key]: boolVal ?? (isNaN(numVal) ? value : numVal) });
+    this.ui?.appendSuccess('Config: ' + key + ' = ' + value);
+    if (key === 'theme') this.ui?.setTheme(value);
+    if (key === 'logLevel') logger.setLevel(value as 'debug' | 'info' | 'warn' | 'error' | 'silent');
+  }
+
+  private async exportConversation(): Promise<void> {
+    try {
+      const md = this.ui?.exportConversationMarkdown() || '';
+      const mem = await this.memory.exportToMarkdown();
+      const filePath = path.join(ROOT, 'export_' + Date.now() + '.md');
+      await fs.writeFile(filePath, md + '\n\n' + mem, 'utf-8');
+      this.ui?.appendSuccess('Exported: ' + path.basename(filePath));
+    } catch (e) { this.ui?.appendError((e as Error).message); }
+  }
+
+  private async importConversation(filePath: string): Promise<void> {
+    try {
+      const fullPath = path.isAbsolute(filePath) ? filePath : path.join(ROOT, filePath);
+      const content = await fs.readFile(fullPath, 'utf-8');
+      this.ui?.appendSuccess('Imported ' + content.length + ' bytes');
+    } catch (e) { this.ui?.appendError((e as Error).message); }
+  }
+
+  private showLog(): void {
+    const entries = logger.getEntries().map(e => ({ timestamp: e.timestamp, module: e.module, message: e.message }));
+    this.ui?.showErrorLog(entries);
+  }
+
+  private showErrors(): void {
+    const entries = logger.getRecentErrors().map(e => ({ timestamp: e.timestamp, module: e.module, message: e.message }));
+    this.ui?.showErrorLog(entries);
+  }
+
+  private async runTests(): Promise<void> {
+    this.ui?.appendSystem('Running test suite...');
+    const result = await this.testRunner.runAll();
+    if (result.passed) this.ui?.appendSuccess('All ' + result.totalTests + ' tests passed (' + result.duration + 'ms)');
+    else this.ui?.appendError(result.failedTests + '/' + result.totalTests + ' tests failed (' + result.duration + 'ms)');
+    for (const err of result.errors) this.ui?.appendError('  ✗ ' + err);
+  }
+
+  private showHealth(): void {
+    const h = this.crashRecovery.getHealth();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}System Health{/bold}');
+    this.ui?.appendInfo('Status: ' + h.status);
+    this.ui?.appendInfo('PID: ' + h.pid);
+    this.ui?.appendInfo('Boot count: ' + h.bootCount);
+    this.ui?.appendInfo('Crash count: ' + h.crashCount);
+    this.ui?.appendInfo('Uptime: ' + Math.floor((Date.now() - h.startedAt) / 1000) + 's');
+    if (h.lastCrashError) this.ui?.appendWarning('Last crash: ' + h.lastCrashError);
+    this.ui?.appendDivider();
+  }
+
+  private showEvolution(): void {
+    const s = this.evolutionMemory.getStats();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Evolution History{/bold}');
+    this.ui?.appendInfo('Total attempts: ' + s.totalAttempts);
+    this.ui?.appendSuccess('Successes: ' + s.successes);
+    this.ui?.appendError('Failures: ' + s.failures);
+    this.ui?.appendWarning('Rolled back: ' + s.rolledBack);
+    this.ui?.appendInfo('Success rate: ' + (s.successRate * 100).toFixed(1) + '%');
+    this.ui?.appendInfo('Avg duration: ' + s.averageDuration.toFixed(0) + 'ms');
+    this.ui?.appendInfo('Best form: ' + (s.bestForm || 'N/A'));
+    this.ui?.appendInfo('Worst form: ' + (s.worstForm || 'N/A'));
+    this.ui?.appendInfo('Trend: ' + s.recentTrend);
+    this.ui?.appendDivider();
+  }
+
+  private async showGitLog(): Promise<void> {
+    const log = await this.gitIntegration.getLog(10);
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Git Log{/bold}');
+    for (const c of log) this.ui?.appendInfo(c.hash.substring(0, 7) + ' ' + c.message + ' (' + c.date + ')');
+    if (!log.length) this.ui?.appendInfo('No commits yet');
+    this.ui?.appendDivider();
+  }
+
+  private async searchKnowledge(query: string): Promise<void> {
+    const entries = await this.knowledgeBase.search(query);
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('Knowledge: "' + query + '" — ' + entries.length + ' results');
+    for (const e of entries.slice(0, 5)) {
+      this.ui?.appendInfo('{bold}' + e.title + '{/bold}: ' + e.content.substring(0, 100) + '...');
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async showKnowledge(): Promise<void> {
+    const entries = await this.knowledgeBase.getAll();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Knowledge Base{/bold} — ' + entries.length + ' entries');
+    for (const e of entries.slice(0, 10)) {
+      this.ui?.appendInfo('  ' + e.title + ' [' + e.tags.join(', ') + ']');
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async showTemplate(name: string): Promise<void> {
+    const t = this.templateManager.getTemplate(name);
+    if (!t) { this.ui?.appendWarning('Template not found: ' + name); return; }
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Template: ' + t.name + '{/bold}');
+    this.ui?.appendInfo('Description: ' + t.description);
+    this.ui?.appendInfo('Form: ' + t.form);
+    this.ui?.appendInfo('Domains: ' + t.domains.join(', '));
+    this.ui?.appendInfo('Key features: ' + t.keyFeatures.join(', '));
+    this.ui?.appendInfo('Suggested skills: ' + t.suggestedSkills.join(', '));
+    this.ui?.appendDivider();
+  }
+
+  private showTemplates(): void {
+    const templates = this.templateManager.getAllTemplates();
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Transformation Templates{/bold}');
+    for (const t of templates) {
+      this.ui?.appendInfo('  {bold}' + t.name + '{/bold} → ' + t.form + ': ' + t.description);
+    }
+    this.ui?.appendDivider();
+  }
+
+  private async showSessions(): Promise<void> {
+    const sessions = await this.sessionPersistence.getRecentSessions(10);
+    this.ui?.appendDivider();
+    this.ui?.appendSystem('{bold}Recent Sessions{/bold}');
+    for (const s of sessions) {
+      const date = new Date(s.startedAt).toLocaleString('fr-FR');
+      this.ui?.appendInfo('  ' + s.id + ' — ' + date + ' — ' + s.entries.length + ' entries — ' + s.form);
+    }
+    this.ui?.appendDivider();
+  }
+
+  private showCache(): void {
+    const s = this.responseCache.getStats();
+    this.ui?.appendInfo('Cache: ' + s.size + '/' + s.maxEntries + ' entries, ' + s.totalHits + ' hits');
+  }
+
+  private async autoRecover(): Promise<void> {
+    this.ui?.appendSystem('Attempting auto-recovery...');
+    const rolled = await this.crashRecovery.autoRollback();
+    if (rolled) this.ui?.appendSuccess('Auto-recovered from: ' + rolled);
+    else this.ui?.appendWarning('No recovery needed or no snapshots available');
+  }
+
+  private async handleInput(userMessage: string): Promise<void> {
+    if (this.busy) { this.ui?.appendError('Request in progress...'); return; }
+    this.busy = true;
+    this.ui?.setStatus(this.renderStatus());
+
+    try {
+      await this.sessionPersistence.addEntry('user', userMessage);
+      const output = await this.processInput(userMessage);
+
+      if (output && output !== 'STREAMING') {
+        this.ui?.appendAssistant(output);
+        await this.sessionPersistence.addEntry('assistant', output);
+      } else if (output === 'STREAMING' && this.ui) {
+        this.ui.startStreaming();
+        const systemPrompt = this.buildCurrentSystemPrompt();
+        const messages = this.buildCurrentMessages(userMessage);
+        const streamed = await this.llm.generate({
+          systemPrompt,
+          messages,
+          maxTokens: config.get('maxTokens'),
+          stream: true,
+          onToken: (token: string) => this.ui?.appendStreamToken(token)
+        });
+        this.ui.finishStreaming();
+        await this.sessionPersistence.addEntry('assistant', streamed);
+        await this.memory.remember('interaction', { input: userMessage, output: streamed });
+        await this.dna.logInteraction();
+        this.refreshDashboardData();
+      }
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (this.ui) this.ui.appendError(msg);
+      else console.error('Error: ' + msg);
+      this.ui?.updateDashboardData({ recentErrors: logger.getRecentErrors().length });
+    } finally {
+      this.busy = false;
+      this.ui?.setStatus(this.renderStatus());
+      const rl = rateLimiter.getState();
+      const remaining = rateLimiter.getRemainingMs();
+      this.ui?.updateDashboardData({
+        rateLimited: rl.isLimited,
+        rateLimitRemaining: rl.isLimited ? Math.ceil(remaining / 1000) + 's' : ''
+      });
+    }
+  }
+
+  async processInput(userMessage: string): Promise<string | null> {
+    const memoryContext = this.memory.getRecentContext(5);
+    const intent = await this.intent.perceive(userMessage, memoryContext);
+
+    if (intent.transformationNeeded && intent.targetForm) {
+      this.ui?.appendSystem('Transformation → ' + intent.targetForm);
+      await this.transformer.transformSelf(intent.targetForm, intent);
+      return null;
+    }
+
+    for (const skill of intent.requiredSkills) {
+      await this.skills.activate(skill, intent);
+      this.ui?.appendSystem('Skill: ' + skill);
+    }
+
+    if (!config.get('streamEnabled')) {
+      const systemPrompt = this.buildCurrentSystemPrompt();
+      const messages = this.buildCurrentMessages(userMessage);
+
+      const cached = this.responseCache.get(systemPrompt, messages);
+      if (cached) {
+        this.ui?.appendInfo('(cached response)');
+        return cached;
+      }
+
+      const response = await this.llm.generate({
+        systemPrompt,
+        messages,
+        maxTokens: config.get('maxTokens')
+      });
+      this.responseCache.set(systemPrompt, messages, response);
+
+      await this.memory.remember('interaction', { input: userMessage, output: response });
+      await this.dna.logInteraction();
+      this.refreshDashboardData();
+
+      this.evolution
+        .analyze({ input: userMessage, output: response, skills: intent.requiredSkills })
+        .catch(() => {});
+
+      return response;
+    }
+
+    return 'STREAMING';
+  }
+
+  private buildCurrentSystemPrompt(): string {
+    const skillContext = this.skills.getActiveContext();
+    return this.llm.buildDefaultSystemPrompt()
+      + (skillContext ? '\n\nACTIVE SKILLS:\n' + skillContext : '');
+  }
+
+  private buildCurrentMessages(userMessage: string): Array<{ role: 'user' | 'assistant'; content: string }> {
+    const recentMemory = this.memory.getRecentContext(8);
+    return [
+      ...recentMemory
+        .filter((m) => m.key === 'interaction')
+        .flatMap((m) => {
+          const value = m.value as { input: string; output: string };
+          return [
+            { role: 'user' as const, content: value.input },
+            { role: 'assistant' as const, content: value.output }
+          ];
+        }),
+      { role: 'user' as const, content: userMessage }
+    ];
+  }
+
+  private startPlainLoop(): void {
+    const warning = this.preflightWarning();
+    if (warning) console.log('⚠ ' + warning);
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      prompt: 'YOU → '
+    });
+
+    rl.prompt();
+    rl.on('line', async (line) => {
+      const input = line.trim();
+      if (!input) return rl.prompt();
+
+      if (input === '/quit' || input === '/exit') {
+        await this.sessionPersistence.endSession();
+        await pluginManager.shutdown();
+        await this.crashRecovery.shutdown();
+        process.exit(0);
+      }
+      if (input === '/status') {
+        console.log(this.renderStatus().join('\n').replace(/\{[^}]+\}/g, ''));
+        return rl.prompt();
+      }
+      if (input === '/memory') {
+        const s = this.memory.getStats();
+        console.log('Memory: ' + s.shortTerm + ' short, ' + s.longTerm + ' long, ' + s.patterns + ' patterns, ' + s.totalSize);
+        return rl.prompt();
+      }
+      if (input === '/tests') {
+        const r = await this.testRunner.runAll();
+        console.log('Tests: ' + r.passedTests + '/' + r.totalTests + ' ' + (r.passed ? 'PASSED' : 'FAILED'));
+        return rl.prompt();
+      }
+      if (input === '/health') {
+        const h = this.crashRecovery.getHealth();
+        console.log('Health: ' + h.status + ' | boots: ' + h.bootCount + ' | crashes: ' + h.crashCount);
+        return rl.prompt();
+      }
+      if (input === '/evolution') {
+        const s = this.evolutionMemory.getStats();
+        console.log('Evolution: ' + s.totalAttempts + ' attempts, ' + (s.successRate * 100).toFixed(1) + '% success, trend: ' + s.recentTrend);
+        return rl.prompt();
+      }
+      if (input === '/help') {
+        console.log('Commands: /status /clear /theme /help /exit /memory /snapshots /skills /tests /health /evolution /git /knowledge /templates /sessions /cache');
+        return rl.prompt();
+      }
+
+      await this.handleInput(input);
+      rl.prompt();
+    });
+  }
+}
+
+const ultimate = new Ultimate();
+ultimate.boot().catch((err) => {
+  console.error('Fatal:', err);
+  process.exit(1);
+});
+
+process.on('SIGINT', async () => {
+  logger.info('System', 'SIGINT received');
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  logger.info('System', 'SIGTERM received');
+  process.exit(0);
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('System', 'Uncaught: ' + err.message);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('System', 'Unhandled rejection: ' + reason);
+});

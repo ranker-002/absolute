@@ -1,0 +1,6 @@
+node_modules/
+.env
+*.log
+.crash_marker
+.temp_validate.*
+ultimate.config.json

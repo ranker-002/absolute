@@ -1,0 +1,114 @@
+{
+  "skills": [
+    {
+      "name": "software_development",
+      "status": "dormant",
+      "domains": [
+        "js",
+        "python",
+        "rust",
+        "go",
+        "all"
+      ]
+    },
+    {
+      "name": "music_composition",
+      "status": "dormant",
+      "domains": [
+        "midi",
+        "audio",
+        "theory"
+      ]
+    },
+    {
+      "name": "graphic_design",
+      "status": "dormant",
+      "domains": [
+        "svg",
+        "ui",
+        "branding"
+      ]
+    },
+    {
+      "name": "data_science",
+      "status": "dormant",
+      "domains": [
+        "ml",
+        "stats",
+        "visualization"
+      ]
+    },
+    {
+      "name": "cybersecurity",
+      "status": "dormant",
+      "domains": [
+        "pentest",
+        "analysis",
+        "hardening"
+      ]
+    },
+    {
+      "name": "algorithmic_trading",
+      "status": "dormant",
+      "domains": [
+        "strategy",
+        "backtest",
+        "execution"
+      ]
+    },
+    {
+      "name": "creative_writing",
+      "status": "dormant",
+      "domains": [
+        "fiction",
+        "copywriting",
+        "poetry"
+      ]
+    },
+    {
+      "name": "science_research",
+      "status": "dormant",
+      "domains": [
+        "physics",
+        "chemistry",
+        "biology"
+      ]
+    },
+    {
+      "name": "game_development",
+      "status": "dormant",
+      "domains": [
+        "logic",
+        "assets",
+        "engine"
+      ]
+    },
+    {
+      "name": "meta_skill_creation",
+      "status": "always_active",
+      "domains": [
+        "synthesis",
+        "learning"
+      ]
+    },
+    {
+      "name": "general",
+      "domains": [
+        "general"
+      ],
+      "systemPromptAddition": "Tu maîtrises maintenant le domaine : general. Produis des résultats experts dans ce domaine.",
+      "capabilities": [
+        "Expert en general"
+      ],
+      "executionPatterns": [
+        "Réponse directe et experte"
+      ],
+      "qualityMetrics": [
+        "Précision",
+        "Pertinence"
+      ],
+      "relatedSkills": [],
+      "status": "synthesized"
+    }
+  ]
+}

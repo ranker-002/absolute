@@ -1,0 +1,25 @@
+{
+  "identity": {
+    "name": "ULTIMATE",
+    "version": "1.0.0",
+    "birth": 1779910106988,
+    "currentForm": "terminal-cli"
+  },
+  "mutations": 0,
+  "evolution_log": [],
+  "memory": {
+    "user_preferences": {},
+    "learned_patterns": [],
+    "active_skills": [
+      "general"
+    ],
+    "transformation_history": [],
+    "interaction_count": 0
+  },
+  "capabilities": {
+    "self_modify": true,
+    "learn_in_realtime": true,
+    "skill_acquisition": "unlimited",
+    "form_limit": "none"
+  }
+}
