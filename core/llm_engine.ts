@@ -57,7 +57,7 @@ export class LLMEngine {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + this.getApiKey(),
       'HTTP-Referer': 'https://ultimate-ai.local',
-      'X-OpenRouter-Title': 'ULTIMATE — Living Intelligence'
+      'X-OpenRouter-Title': 'ABSOLUTE - Living Intelligence'
     };
   }
 
