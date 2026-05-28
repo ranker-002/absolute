@@ -203,30 +203,40 @@ export class TerminalUI {
     this.screen.key(['tab'], () => this.inputBox.focus());
     this.screen.key(['C-s'], () => { this.logBox.setScrollPerc(100); this.screen.render(); });
 
-    this.inputBox.key('enter', async () => {
-      this.inputBox.readInput(async (_err, val) => {
-        const text = (val || '').trim();
-        this.inputBox.clearValue();
-        this.inputBox.focus();
-        if (!text) return;
+    // Enter key — submit message
+    this.inputBox.key(['enter'], () => {
+      const val = this.inputBox.getValue();
+      if (!val || !val.trim()) return;
+      const text = val.trim();
+      this.inputBox.setValue('');
+      this.screen.render();
 
-        // Autocomplete
-        if (text.startsWith('/')) {
-          const cmds = ['/status', '/clear', '/theme', '/help', '/exit', '/memory', '/recall', '/snapshots', '/snapshot', '/skills', '/model', '/config', '/log', '/errors', '/tests', '/health', '/evolution', '/git', '/knowledge', '/templates', '/sessions', '/cache', '/agent', '/task', '/tasks', '/marketplace', '/deploy', '/webhooks', '/saas', '/failures', '/plugin'];
-          const matches = cmds.filter(c => c.startsWith(text));
-          if (matches.length === 1) { this.inputBox.setValue(matches[0]); this.screen.render(); return; }
-          if (matches.length > 1) { this.msg('info', 'Commands: ' + matches.join(', ')); return; }
-        }
+      // Autocomplete single match
+      if (text.startsWith('/')) {
+        const cmds = ['/status', '/clear', '/theme', '/help', '/exit', '/memory', '/recall', '/snapshots', '/snapshot', '/skills', '/model', '/config', '/log', '/errors', '/tests', '/health', '/evolution', '/git', '/knowledge', '/templates', '/sessions', '/cache', '/agent', '/task', '/tasks', '/marketplace', '/deploy', '/webhooks', '/saas', '/failures', '/plugin', '/users', '/user', '/voice', '/sandbox', '/run', '/patterns', '/docs', '/ingest', '/search', '/optimize', '/compose', '/strategy', '/tenant', '/rollback', '/diff', '/autorecover', '/cache', '/integrations'];
+        const matches = cmds.filter(c => c.startsWith(text));
+        if (matches.length === 1) { this.inputBox.setValue(matches[0]); this.screen.render(); return; }
+        if (matches.length > 1) { this.msg('info', 'Commands: ' + matches.join(', ')); return; }
+      }
 
-        this.msg('user', text);
-        this.history.push(text);
-        this.histIdx = -1;
-        this.isLoading = true;
-        this.setDash();
-        await this.onSubmit(text);
+      this.msg('user', text);
+      this.history.push(text);
+      this.histIdx = -1;
+      this.isLoading = true;
+      this.setDash();
+      const result = this.onSubmit(text);
+      if (result && typeof (result as Promise<void>).then === 'function') {
+        (result as Promise<void>).then(() => {
+          this.isLoading = false;
+          this.setDash();
+        }).catch(() => {
+          this.isLoading = false;
+          this.setDash();
+        });
+      } else {
         this.isLoading = false;
         this.setDash();
-      });
+      }
     });
 
     this.inputBox.key('up', () => {
