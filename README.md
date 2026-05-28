@@ -2,21 +2,26 @@
 
 > A self-evolving AI entity that transforms its own source code, learns from every interaction, and autonomously improves over time.
 
-## Quick Start
+## Quick Install
 
 ```bash
-# Clone
+curl -fsSL https://raw.githubusercontent.com/ranker-002/absolute/main/install.sh | bash
+```
+
+This installs ULTIMATE to `~/.ultimate` and adds the `ultimate` command to your PATH.
+
+### Install Options
+
+```bash
+# Custom install directory
+ULTIMATE_DIR=/opt/ultimate curl -fsSL https://raw.githubusercontent.com/ranker-002/absolute/main/install.sh | bash
+
+# Or clone manually
 git clone https://github.com/ranker-002/absolute.git
 cd absolute
-
-# Install
 npm install
-
-# Configure
 cp .env.example .env
-# Edit .env with your OpenRouter API key: https://openrouter.ai/keys
-
-# Run
+# Edit .env with your OpenRouter API key
 npm start
 ```
 
